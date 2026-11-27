@@ -55,6 +55,7 @@ class JobManager:
             write_json(path / "config.json", config.model_dump(mode="json"))
             (path / "strategy.py").write_text(config.strategy, encoding="utf-8")
             job = {"id": identifier, "name": config.name, "status": "running", "created_at": now(),
+                   "strategy_id": config.strategy_id,
                    "source": config.source, "frequency": config.frequency,
                    "start": str(config.start), "end": str(config.end)}
             write_json(path / "job.json", job)

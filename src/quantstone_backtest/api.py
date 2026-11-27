@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import RunConfig
 from .example import EXAMPLE
 from .jobs import JobManager
+from .strategies import StrategyInput, StrategyStore, StrategyUpdate
 
 
 def local_allowed_hosts(extra_hosts=None):
@@ -29,13 +30,15 @@ def host_name(value):
     return name if separator and port.isdigit() else value
 
 
-def create_app(root=None, allowed_hosts=None):
+def create_app(root=None, allowed_hosts=None, strategy_root=None):
     root = Path(root or os.environ.get("QUANTSTONE_BACKTEST_HOME", "var/runs"))
+    strategy_root = Path(strategy_root or root.parent / "strategies")
     accepted_hosts = {host.lower() for host in local_allowed_hosts(allowed_hosts)}
 
     @asynccontextmanager
     async def lifespan(app):
         app.state.jobs = JobManager(root)
+        app.state.strategies = StrategyStore(strategy_root)
         yield
         app.state.jobs.close()
 
@@ -75,12 +78,53 @@ def create_app(root=None, allowed_hosts=None):
     def example():
         return {"strategy": EXAMPLE}
 
+    @app.get("/api/strategies")
+    def list_strategies(request: Request):
+        strategies = request.app.state.strategies.list()
+        runs = request.app.state.jobs.list()
+        for strategy in strategies:
+            related = [run for run in runs if run.get("strategy_id") == strategy["id"]]
+            strategy["run_count"] = len(related)
+            strategy["last_run"] = related[0] if related else None
+            strategy.pop("code", None)
+        return strategies
+
+    @app.post("/api/strategies", status_code=201)
+    def create_strategy(value: StrategyInput, request: Request):
+        try:
+            compile(value.code, "strategy.py", "exec")
+        except SyntaxError as exc:
+            raise HTTPException(422, f"策略第 {exc.lineno} 行：{exc.msg}") from exc
+        return request.app.state.strategies.create(value)
+
+    @app.get("/api/strategies/{identifier}")
+    def get_strategy(identifier: str, request: Request):
+        try:
+            return request.app.state.strategies.get(identifier)
+        except KeyError as exc:
+            raise HTTPException(404, "策略不存在") from exc
+
+    @app.put("/api/strategies/{identifier}")
+    def update_strategy(identifier: str, value: StrategyUpdate, request: Request):
+        try:
+            compile(value.code, "strategy.py", "exec")
+            return request.app.state.strategies.update(identifier, value)
+        except SyntaxError as exc:
+            raise HTTPException(422, f"策略第 {exc.lineno} 行：{exc.msg}") from exc
+        except KeyError as exc:
+            raise HTTPException(404, "策略不存在") from exc
+
     @app.get("/api/runs")
     def list_runs(request: Request):
         return request.app.state.jobs.list()
 
     @app.post("/api/runs", status_code=201)
     def create_run(config: RunConfig, request: Request):
+        if config.strategy_id:
+            try:
+                request.app.state.strategies.get(config.strategy_id)
+            except KeyError as exc:
+                raise HTTPException(422, "关联的策略不存在") from exc
         # Compile only; execution happens exclusively in the child process.
         try:
             compile(config.strategy, "strategy.py", "exec")

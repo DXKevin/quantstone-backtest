@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class RunConfig(BaseModel):
+    strategy_id: str | None = Field(default=None, min_length=32, max_length=32)
     name: str = Field(default="新回测", min_length=1, max_length=100)
     strategy: str = Field(min_length=1, max_length=200_000)
     source: Literal["demo", "sdk"] = "demo"
@@ -19,6 +20,13 @@ class RunConfig(BaseModel):
     minimum_commission: Decimal = Field(default=Decimal("5"), ge=0, le=100000)
     sell_tax_rate: Decimal = Field(default=Decimal("0.0005"), ge=0, le=1)
     transfer_rate: Decimal = Field(default=Decimal("0.00001"), ge=0, le=1)
+
+    @field_validator("strategy_id")
+    @classmethod
+    def valid_strategy_id(cls, identifier):
+        if identifier is not None and any(c not in "0123456789abcdef" for c in identifier):
+            raise ValueError("strategy_id 必须是 32 位小写十六进制标识")
+        return identifier
 
     @field_validator("symbols")
     @classmethod

@@ -24,7 +24,7 @@ def wait_job(client, identifier):
 def test_api_runs_real_worker_and_persists_snapshot(tmp_path):
     with TestClient(create_app(tmp_path)) as c:
         assert c.get('/api/health').json()['status'] == 'ok'
-        assert '策略编辑器' in c.get('/').text
+        assert '策略研究' in c.get('/').text
         response = c.post('/api/runs', json={'strategy': EXAMPLE}, headers=HEADERS)
         assert response.status_code == 201, response.text
         identifier = response.json()['id']
@@ -64,6 +64,57 @@ def test_validation_and_cross_site_requests(tmp_path):
         assert c.post('/api/runs', json={'strategy': EXAMPLE,'symbols':['688001.SH']}, headers=HEADERS).status_code == 422
         assert c.get('/api/runs/invalid').status_code == 404
         assert c.get('/api/health', headers={'Host':'evil.example'}).status_code == 400
+
+
+def test_strategy_repository_and_run_summary(tmp_path):
+    runs, strategy_root = tmp_path / 'runs', tmp_path / 'strategies'
+    with TestClient(create_app(runs, strategy_root=strategy_root)) as c:
+        seeded = c.get('/api/strategies').json()
+        assert len(seeded) == 1
+        assert seeded[0]['name'] == '我的第一个策略'
+        assert 'code' not in seeded[0]
+        assert seeded[0]['run_count'] == 0
+
+        response = c.post(
+            '/api/strategies',
+            json={
+                'name': '  分钟突破  ',
+                'description': '下一交易日寻找突破信号',
+                'market': 'A股',
+                'frequency': '日线 + 分钟',
+                'tags': ['突破', '突破', '盘前选股'],
+                'code': EXAMPLE,
+            },
+            headers=HEADERS,
+        )
+        assert response.status_code == 201, response.text
+        strategy = response.json()
+        assert strategy['name'] == '分钟突破'
+        assert strategy['tags'] == ['突破', '盘前选股']
+
+        updated = c.put(
+            f"/api/strategies/{strategy['id']}",
+            json={**strategy, 'description': '盘后选股，次日日内触发', 'status': 'active'},
+            headers=HEADERS,
+        )
+        assert updated.status_code == 200, updated.text
+        assert updated.json()['description'] == '盘后选股，次日日内触发'
+
+        run = c.post(
+            '/api/runs',
+            json={'strategy_id': strategy['id'], 'strategy': EXAMPLE},
+            headers=HEADERS,
+        )
+        assert run.status_code == 201, run.text
+        result = wait_job(c, run.json()['id'])
+        assert result['status'] == 'completed'
+        summary = next(item for item in c.get('/api/strategies').json() if item['id'] == strategy['id'])
+        assert summary['run_count'] == 1
+        assert summary['last_run']['id'] == run.json()['id']
+
+        assert c.post('/api/strategies', json={'name': '坏策略', 'code': 'def bad('}, headers=HEADERS).status_code == 422
+        assert c.get('/api/strategies/not-an-id').status_code == 404
+        assert c.post('/api/runs', json={'strategy_id': '0' * 32, 'strategy': EXAMPLE}, headers=HEADERS).status_code == 422
 
 
 def test_lan_host_can_be_allowed_explicitly(tmp_path):

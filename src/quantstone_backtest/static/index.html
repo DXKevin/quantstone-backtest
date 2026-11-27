@@ -1,32 +1,95 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>QuantStone · 回测工作台</title><link rel="stylesheet" href="/styles.css"><script defer src="/app.js"></script></head>
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QuantStone · 策略研究</title><link rel="stylesheet" href="/styles.css"><script defer src="/app.js"></script>
+</head>
 <body>
-<header><a class="brand" href="/">Q<span>QuantStone <small>BACKTEST</small></span></a><span class="header-note">策略研究工作台</span><span class="badge">本地开发版 · v0.1</span></header>
-<main>
-<section class="page-title"><div><p class="eyebrow">RESEARCH / BACKTEST</p><h1>让策略接受历史检验。</h1><p>Python 策略 · 日线与分钟线 · 账户级模拟</p></div><button id="help-button" class="secondary">策略接口说明</button></section>
-<div id="notice" role="alert" hidden></div>
-<section class="workspace">
-<aside class="strategy-panel panel">
-<div class="panel-heading"><div><span class="section-label">策略编辑器</span><small>strategy.py</small></div><button id="example-button" class="text-button">载入示例</button></div>
-<label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" spellcheck="false" autocomplete="off" aria-describedby="editor-note"></textarea>
-<div class="editor-footer" id="editor-note"><span>Python · UTF-8</span><span id="save-state">草稿保存在此浏览器</span></div>
-<details id="help"><summary>生命周期与交易接口</summary><div class="help-content"><p><strong>普通策略：</strong><code>init(ctx)</code> 初始化；<code>before_trading(ctx)</code> 盘前；<code>handle_bar(ctx, bars)</code> K 线结束；<code>after_trading(ctx)</code> 盘后。</p><p><code>ctx.order(symbol, 'buy', 100)</code> 下单，下一根开盘尝试成交。可传 <code>limit_price</code>。普通策略无需处理委托或成交回报。</p><p><code>ctx.history(symbol, 20, '1d')</code> 查询已完成行情；<code>ctx.portfolio</code> 账户快照；<code>ctx.state</code> 保存策略状态。</p><p><strong>高级可选：</strong><code>on_order(ctx, order)</code>、<code>on_trade(ctx, trade)</code> 和 <code>ctx.cancel(order_id)</code>，只在策略需要立即响应订单状态时使用。</p><p><code>ctx.log(message)</code> 写日志。仅运行你信任的本地代码；进程隔离用于任务管理，不是 Python 安全沙箱。</p></div></details>
+<header class="topbar">
+  <a class="brand" href="#" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a>
+  <nav><a class="active" href="#">策略研究</a><a href="#" data-coming>绩效分析</a><a href="#" data-coming>数据中心</a></nav>
+  <div class="topbar-meta"><span class="system-dot"></span> 本地研究环境</div>
+</header>
+<div class="app-shell">
+<aside class="sidebar" aria-label="研究导航">
+  <button class="side-item active"><span>⌁</span>策略研究</button>
+  <button class="side-item" data-coming><span>↗</span>绩效分析</button>
+  <button class="side-item" data-coming><span>◫</span>数据管理</button>
+  <div class="side-bottom"><span>v0.1</span><small>Python engine</small></div>
 </aside>
-<div class="right-column">
-<section class="panel config-panel">
-<div class="panel-heading"><span class="section-label">回测配置</span><span class="hint">后一根 K 线开盘撮合</span></div>
-<form id="run-form">
-<div class="form-grid"><label class="wide">回测名称<input id="name" value="我的第一个策略" maxlength="100" required></label><label>数据来源<select id="source"><option value="demo">合成示例行情</option><option value="sdk">QuantStone 真实数据</option></select></label><label>运行频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label><label class="wide">真实分钟数据时间标签<select id="minute_label"><option value="end">结束时间（实测适配，跳过 09:30 记录）</option><option value="start">开始时间（严格按原契约）</option></select></label><label>开始日期<input id="start" type="date" value="2026-11-02" required></label><label>结束日期<input id="end" type="date" value="2026-11-13" required></label><label>初始资金 / 元<input id="initial_cash" type="number" value="1000000" min="1" required></label><label>股票池<input id="symbols" value="000001.SZ" placeholder="000001.SZ,600000.SH" required></label></div>
-<details class="fees"><summary>交易费用参数</summary><div class="form-grid"><label>佣金比例<input id="commission_rate" type="number" value="0.0003" min="0" max="1" step="0.00001"></label><label>最低佣金 / 元<input id="minimum_commission" type="number" value="5" min="0" step="0.01"></label><label>卖出税费比例<input id="sell_tax_rate" type="number" value="0.0005" min="0" max="1" step="0.00001"></label><label>过户费比例<input id="transfer_rate" type="number" value="0.00001" min="0" max="1" step="0.000001"></label></div><p class="hint">固定费率假设，不自动重建历史费率变更。</p></details>
-<div class="run-actions"><span id="source-note" class="hint">示例是合成数据，用于验证流程。</span><button type="submit" id="run-button">运行回测</button></div>
-</form></section>
-<section class="panel results-panel"><div class="panel-heading"><div><span class="section-label">回测结果</span><small id="result-name">等待运行</small></div><span id="status" class="status">尚未开始</span></div><div class="progress-track"><progress id="progress" max="1" value="0" aria-label="回测进度"></progress></div>
-<div class="metrics"><div><span>累计收益</span><strong id="return-value">—</strong></div><div><span>最大回撤</span><strong id="drawdown-value">—</strong></div><div><span>账户总资产</span><strong id="equity-value">—</strong></div><div><span>成交笔数</span><strong id="trades-value">—</strong></div></div>
-<div id="chart" class="chart"><div class="empty"><span class="empty-icon">∿</span><strong>从一次回测开始</strong><p>运行策略后，在这里查看每日账户净值。</p></div></div>
-<p id="result-note" class="result-note"></p><div class="result-actions"><span id="progress-text" class="hint"></span><div><button id="cancel-button" class="secondary" hidden>取消任务</button><button id="export-button" class="secondary" disabled>导出结果</button></div></div></section>
-</div></section>
-<section class="panel details-panel"><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-tab="positions">持仓</button><button role="tab" aria-selected="false" data-tab="orders">订单</button><button role="tab" aria-selected="false" data-tab="trades">成交</button><button role="tab" aria-selected="false" data-tab="logs">日志与错误</button></div><div id="detail-content" class="table-container" role="tabpanel"><p class="hint">运行回测后查看明细。</p></div></section>
-<section class="panel history-panel"><div class="panel-heading"><span class="section-label">回测历史</span><button id="refresh-button" class="text-button">刷新</button></div><div id="history" class="table-container"></div></section>
-<footer>QuantStone Backtest <span>未复权撮合 · 人民币账户 · Asia/Shanghai</span></footer>
-</main></body></html>
+<main>
+<div id="notice" role="alert" hidden></div>
+<section id="strategy-view" class="view">
+  <div class="page-heading"><div><p class="eyebrow">STRATEGY RESEARCH</p><h1>策略研究</h1><p class="subhead">集中管理策略代码、研究标签与历史回测。</p></div><button id="new-strategy-button" class="primary"><span>＋</span> 新建策略</button></div>
+  <section class="stat-grid" aria-label="策略概览">
+    <article><span>策略总数</span><strong id="strategy-total">—</strong><small>研究资产</small></article>
+    <article><span>启用中</span><strong id="strategy-active">—</strong><small>可继续研究</small></article>
+    <article><span>累计回测</span><strong id="run-total">—</strong><small>全部策略</small></article>
+    <article><span>正在运行</span><strong id="run-running">—</strong><small>后台任务</small></article>
+  </section>
+  <section class="strategy-card">
+    <div class="toolbar">
+      <div class="search-box"><span>⌕</span><label class="sr-only" for="strategy-search">搜索策略</label><input id="strategy-search" type="search" placeholder="搜索策略名称、说明或标签"></div>
+      <div class="filters"><label>市场<select id="market-filter"><option value="">全部市场</option><option>A股</option></select></label><label>频率<select id="frequency-filter"><option value="">全部频率</option><option>日线</option><option>分钟</option><option>日线 + 分钟</option></select></label><label>状态<select id="status-filter"><option value="">全部状态</option><option value="active">启用中</option><option value="archived">已归档</option></select></label></div>
+    </div>
+    <div class="strategy-table-wrap">
+      <table class="strategy-table"><thead><tr><th>策略</th><th>市场 / 频率</th><th>标签</th><th>最近回测</th><th>回测次数</th><th>最后修改</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="strategy-list"></tbody></table>
+      <div id="strategy-empty" class="empty-state" hidden><div>⌁</div><strong>没有找到策略</strong><p>调整筛选条件，或创建一个新策略。</p></div>
+    </div>
+  </section>
+</section>
+
+<section id="workbench-view" class="view" hidden>
+  <div class="workbench-heading">
+    <button id="back-button" class="back-button">← 返回策略列表</button>
+    <div class="workbench-title"><div><span id="strategy-status-dot" class="status-dot"></span><h1 id="strategy-title">策略</h1></div><p id="strategy-description"></p></div>
+    <div class="workbench-actions"><span id="save-state">已保存</span><button id="save-strategy-button" class="secondary">保存策略</button><button id="run-button-top" class="primary">运行回测</button></div>
+  </div>
+  <div class="workbench-tabs"><button class="active" data-worktab="code">策略代码</button><button data-worktab="results">回测结果</button><button data-worktab="history">历史记录</button></div>
+  <section id="code-pane" class="work-pane">
+    <div class="workspace">
+      <aside class="strategy-panel panel">
+        <div class="panel-heading"><div><span class="section-label">Python 策略</span><small>strategy.py</small></div><button id="example-button" class="text-button">载入示例</button></div>
+        <label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" spellcheck="false" autocomplete="off"></textarea>
+        <div class="editor-footer"><span>Python · UTF-8</span><button id="help-button" class="text-button">接口说明</button></div>
+        <details id="help"><summary>生命周期与交易接口</summary><div class="help-content"><p><strong>普通策略：</strong><code>init(ctx)</code> 初始化；<code>before_trading(ctx)</code> 盘前；<code>handle_bar(ctx, bars)</code> K 线结束；<code>after_trading(ctx)</code> 盘后。</p><p><code>ctx.order(symbol, 'buy', 100)</code> 下单，下一根 K 线开盘尝试成交。普通策略无需处理委托或成交回报。</p><p><code>ctx.history(symbol, 20, '1d')</code> 查询已完成行情；<code>ctx.portfolio</code> 读取账户；<code>ctx.state</code> 保存策略状态。</p></div></details>
+      </aside>
+      <section class="panel config-panel">
+        <div class="panel-heading"><div><span class="section-label">回测配置</span><small>后一根 K 线开盘撮合</small></div></div>
+        <form id="run-form"><div class="form-grid">
+          <label class="wide">回测名称<input id="name" maxlength="100" required></label>
+          <label>数据来源<select id="source"><option value="demo">合成示例行情</option><option value="sdk">QuantStone 真实数据</option></select></label>
+          <label>运行频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label>
+          <label class="wide">分钟数据时间标签<select id="minute_label"><option value="end">结束时间</option><option value="start">开始时间</option></select></label>
+          <label>开始日期<input id="start" type="date" value="2026-11-02" required></label>
+          <label>结束日期<input id="end" type="date" value="2026-11-13" required></label>
+          <label>初始资金 / 元<input id="initial_cash" type="number" value="1000000" min="1" required></label>
+          <label>股票池<input id="symbols" value="000001.SZ" placeholder="000001.SZ,600000.SH" required></label>
+        </div>
+        <details class="fees"><summary>交易费用参数</summary><div class="form-grid"><label>佣金比例<input id="commission_rate" type="number" value="0.0003" min="0" max="1" step="0.00001"></label><label>最低佣金 / 元<input id="minimum_commission" type="number" value="5" min="0" step="0.01"></label><label>卖出税费比例<input id="sell_tax_rate" type="number" value="0.0005" min="0" max="1" step="0.00001"></label><label>过户费比例<input id="transfer_rate" type="number" value="0.00001" min="0" step="0.000001"></label></div></details>
+        <div class="run-actions"><span id="source-note" class="hint">示例是合成数据，用于验证流程。</span><button type="submit" id="run-button">运行回测</button></div></form>
+      </section>
+    </div>
+  </section>
+  <section id="results-pane" class="work-pane" hidden>
+    <section class="panel results-panel"><div class="panel-heading"><div><span class="section-label">回测结果</span><small id="result-name">等待运行</small></div><span id="status" class="status">尚未开始</span></div><div class="progress-track"><progress id="progress" max="1" value="0"></progress></div>
+      <div class="metrics"><div><span>累计收益</span><strong id="return-value">—</strong></div><div><span>最大回撤</span><strong id="drawdown-value">—</strong></div><div><span>账户总资产</span><strong id="equity-value">—</strong></div><div><span>成交笔数</span><strong id="trades-value">—</strong></div></div>
+      <div id="chart" class="chart"><div class="empty"><strong>从一次回测开始</strong><p>运行策略后，在这里查看账户净值。</p></div></div>
+      <p id="result-note" class="result-note"></p><div class="result-actions"><span id="progress-text" class="hint"></span><div><button id="cancel-button" class="secondary" hidden>取消任务</button><button id="export-button" class="secondary" disabled>导出结果</button></div></div>
+    </section>
+    <section class="panel details-panel"><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-tab="positions">持仓</button><button role="tab" aria-selected="false" data-tab="orders">订单</button><button role="tab" aria-selected="false" data-tab="trades">成交</button><button role="tab" aria-selected="false" data-tab="logs">日志与错误</button></div><div id="detail-content" class="table-container" role="tabpanel"><p class="hint">运行回测后查看明细。</p></div></section>
+  </section>
+  <section id="history-pane" class="work-pane" hidden><section class="panel history-panel"><div class="panel-heading"><div><span class="section-label">该策略的回测历史</span><small>按创建时间倒序</small></div><button id="refresh-button" class="text-button">刷新</button></div><div id="history" class="table-container"></div></section></section>
+</section>
+</main>
+</div>
+<dialog id="strategy-dialog"><form id="strategy-form" method="dialog">
+  <div class="dialog-heading"><div><p class="eyebrow">NEW RESEARCH</p><h2>新建策略</h2></div><button type="button" id="dialog-close" class="icon-button" aria-label="关闭">×</button></div>
+  <p class="dialog-note">先建立策略档案，进入工作台后再编写代码和运行回测。</p>
+  <label>策略名称<input id="new-name" maxlength="100" placeholder="例如：小市值动量策略" required></label>
+  <label>策略说明<textarea id="new-description" maxlength="500" placeholder="记录策略假设、适用市场或研究目标"></textarea></label>
+  <div class="dialog-grid"><label>市场<select id="new-market"><option>A股</option></select></label><label>研究频率<select id="new-frequency"><option>日线</option><option>分钟</option><option>日线 + 分钟</option></select></label></div>
+  <label>标签<input id="new-tags" placeholder="动量, 多因子, 低波动"></label>
+  <div class="dialog-actions"><button type="button" id="dialog-cancel" class="secondary">取消</button><button type="submit" class="primary">创建并进入</button></div>
+</form></dialog>
+</body></html>
