@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>QuantStone · 回测工作台</title><link rel="stylesheet" href="/styles.css"><script defer src="/app.js"></script></head>
+<body>
+<header><a class="brand" href="/">Q<span>QuantStone <small>BACKTEST</small></span></a><span class="header-note">策略研究工作台</span><span class="badge">本地开发版 · v0.1</span></header>
+<main>
+<section class="page-title"><div><p class="eyebrow">RESEARCH / BACKTEST</p><h1>让策略接受历史检验。</h1><p>Python 策略 · 日线与分钟线 · 账户级模拟</p></div><button id="help-button" class="secondary">策略接口说明</button></section>
+<div id="notice" role="alert" hidden></div>
+<section class="workspace">
+<aside class="strategy-panel panel">
+<div class="panel-heading"><div><span class="section-label">策略编辑器</span><small>strategy.py</small></div><button id="example-button" class="text-button">载入示例</button></div>
+<label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" spellcheck="false" autocomplete="off" aria-describedby="editor-note"></textarea>
+<div class="editor-footer" id="editor-note"><span>Python · UTF-8</span><span id="save-state">草稿保存在此浏览器</span></div>
+<details id="help"><summary>生命周期与交易接口</summary><div class="help-content"><p><code>init(ctx)</code> 初始化；<code>before_trading(ctx)</code> 盘前；<code>handle_bar(ctx, bars)</code> K 线结束；<code>after_trading(ctx)</code> 盘后。</p><p><code>ctx.order(symbol, 'buy', 100)</code> 下单，下一根开盘尝试成交。可传 <code>limit_price</code>。<code>ctx.cancel(order_id)</code> 撤单。</p><p><code>ctx.history(symbol, 20, '1d')</code> 查询已完成行情；<code>ctx.portfolio</code> 账户快照；<code>ctx.state</code> 保存策略状态。</p><p><code>on_order(ctx, order)</code> 订单回报；<code>on_trade(ctx, trade)</code> 成交回报；<code>ctx.log(message)</code> 写日志。</p><p>仅运行你信任的本地代码。进程隔离用于任务管理，不是 Python 安全沙箱。</p></div></details>
+</aside>
+<div class="right-column">
+<section class="panel config-panel">
+<div class="panel-heading"><span class="section-label">回测配置</span><span class="hint">后一根 K 线开盘撮合</span></div>
+<form id="run-form">
+<div class="form-grid"><label class="wide">回测名称<input id="name" value="我的第一个策略" maxlength="100" required></label><label>数据来源<select id="source"><option value="demo">合成示例行情</option><option value="sdk">QuantStone 真实数据</option></select></label><label>运行频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label><label class="wide">真实分钟数据时间标签<select id="minute_label"><option value="end">结束时间（实测适配，跳过 09:30 记录）</option><option value="start">开始时间（严格按原契约）</option></select></label><label>开始日期<input id="start" type="date" value="2026-11-02" required></label><label>结束日期<input id="end" type="date" value="2026-11-13" required></label><label>初始资金 / 元<input id="initial_cash" type="number" value="1000000" min="1" required></label><label>股票池<input id="symbols" value="000001.SZ" placeholder="000001.SZ,600000.SH" required></label></div>
+<details class="fees"><summary>交易费用参数</summary><div class="form-grid"><label>佣金比例<input id="commission_rate" type="number" value="0.0003" min="0" max="1" step="0.00001"></label><label>最低佣金 / 元<input id="minimum_commission" type="number" value="5" min="0" step="0.01"></label><label>卖出税费比例<input id="sell_tax_rate" type="number" value="0.0005" min="0" max="1" step="0.00001"></label><label>过户费比例<input id="transfer_rate" type="number" value="0.00001" min="0" max="1" step="0.000001"></label></div><p class="hint">固定费率假设，不自动重建历史费率变更。</p></details>
+<div class="run-actions"><span id="source-note" class="hint">示例是合成数据，用于验证流程。</span><button type="submit" id="run-button">运行回测</button></div>
+</form></section>
+<section class="panel results-panel"><div class="panel-heading"><div><span class="section-label">回测结果</span><small id="result-name">等待运行</small></div><span id="status" class="status">尚未开始</span></div><div class="progress-track"><progress id="progress" max="1" value="0" aria-label="回测进度"></progress></div>
+<div class="metrics"><div><span>累计收益</span><strong id="return-value">—</strong></div><div><span>最大回撤</span><strong id="drawdown-value">—</strong></div><div><span>账户总资产</span><strong id="equity-value">—</strong></div><div><span>成交笔数</span><strong id="trades-value">—</strong></div></div>
+<div id="chart" class="chart"><div class="empty"><span class="empty-icon">∿</span><strong>从一次回测开始</strong><p>运行策略后，在这里查看每日账户净值。</p></div></div>
+<p id="result-note" class="result-note"></p><div class="result-actions"><span id="progress-text" class="hint"></span><div><button id="cancel-button" class="secondary" hidden>取消任务</button><button id="export-button" class="secondary" disabled>导出结果</button></div></div></section>
+</div></section>
+<section class="panel details-panel"><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-tab="positions">持仓</button><button role="tab" aria-selected="false" data-tab="orders">订单</button><button role="tab" aria-selected="false" data-tab="trades">成交</button><button role="tab" aria-selected="false" data-tab="logs">日志与错误</button></div><div id="detail-content" class="table-container" role="tabpanel"><p class="hint">运行回测后查看明细。</p></div></section>
+<section class="panel history-panel"><div class="panel-heading"><span class="section-label">回测历史</span><button id="refresh-button" class="text-button">刷新</button></div><div id="history" class="table-container"></div></section>
+<footer>QuantStone Backtest <span>未复权撮合 · 人民币账户 · Asia/Shanghai</span></footer>
+</main></body></html>

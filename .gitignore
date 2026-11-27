@@ -18,3 +18,7 @@ htmlcov/
 /tmp/
 /data/
 /results/
+/var/
+*.egg-info/
+build/
+dist/
