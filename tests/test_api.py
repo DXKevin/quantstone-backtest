@@ -87,6 +87,7 @@ def test_strategy_repository_and_run_summary(tmp_path):
                 'description': '下一交易日寻找突破信号',
                 'market': 'A股',
                 'frequency': '日线 + 分钟',
+                'folder': '趋势策略/突破',
                 'tags': ['突破', '突破', '盘前选股'],
                 'code': EXAMPLE,
             },
@@ -96,6 +97,7 @@ def test_strategy_repository_and_run_summary(tmp_path):
         strategy = response.json()
         assert strategy['name'] == '分钟突破'
         assert strategy['tags'] == ['突破', '盘前选股']
+        assert strategy['folder'] == '趋势策略/突破'
 
         updated = c.put(
             f"/api/strategies/{strategy['id']}",

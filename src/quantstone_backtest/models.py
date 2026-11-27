@@ -109,6 +109,7 @@ class Order:
     reason: str = ""
     filled_quantity: int = 0
     updated_at: datetime | None = None
+    sizing: str = "fixed"
 
 
 @dataclass(frozen=True)

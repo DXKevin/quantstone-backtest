@@ -30,6 +30,7 @@ if (textarea && parent) {
     snippetCompletion("current(${symbol})", {label: "current", type: "method", detail: "最近已完成行情"}),
     snippetCompletion("history(${symbol}, ${count}, ${frequency})", {label: "history", type: "method", detail: "历史行情"}),
     snippetCompletion("order(${symbol}, ${side}, ${quantity})", {label: "order", type: "method", detail: "提交委托"}),
+    snippetCompletion("order_all(${symbol}, ${side})", {label: "order_all", type: "method", detail: "全仓买入或清仓"}),
     snippetCompletion("cancel_order(${order_id})", {label: "cancel_order", type: "method", detail: "撤销委托"}),
     snippetCompletion("set_fees(${})", {label: "set_fees", type: "method", detail: "设置交易费用"}),
     {label: "portfolio", type: "property", detail: "账户与持仓"},

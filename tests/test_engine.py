@@ -106,6 +106,35 @@ def handle_bar(c, bars):
     assert D(result['account']['available_cash']) == 1100
 
 
+def test_order_all_uses_actual_next_open_and_whole_lots():
+    def handle(c, bars):
+        if c.now.day == 2:
+            c.order_all(S, 'buy')
+        elif c.now.day == 4:
+            c.order_all(S, 'sell')
+
+    result = Engine(
+        [bar(2, 10), bar(3, 13), bar(4, 14), bar(5, 15)],
+        SimpleNamespace(handle_bar=handle),
+        fees=FREE,
+        initial_cash=2500,
+    ).run()
+    assert [trade['quantity'] for trade in result['trades']] == [100, 100]
+    assert [trade['price'] for trade in result['trades']] == ['13', '15']
+    assert D(result['account']['cash']) == 2700
+
+
+def test_order_all_includes_fees_when_sizing():
+    def handle(c, bars):
+        if c.now.day == 2:
+            c.order_all(S, 'buy')
+
+    result = Engine([bar(2), bar(3, 10)], SimpleNamespace(handle_bar=handle), initial_cash=1005)
+    result = result.run()
+    assert result['orders'][0]['status'] == 'rejected'
+    assert result['orders'][0]['reason'] == '可用资金不足以买入一手'
+
+
 def test_cancel_and_end_expiry_release_reservations():
     def handle(c, bars):
         order = c.order(S, 'buy', 100)

@@ -4,6 +4,8 @@ const states = {running:'运行中',completed:'已完成',failed:'失败',cancel
 const fields = ['name','frequency','minute_label','start','end','initial_cash'];
 let strategies = [], currentStrategy = null, selected = null, job = null, timer = null, activeTab = 'positions', exampleCode = '', dirty = false;
 let scope = 'all';
+let collapsedFolders = new Set();
+try{collapsedFolders=new Set(JSON.parse(localStorage.getItem('quantstone.strategyFolders.collapsed')||'[]'));}catch{}
 const isStrategyPage = document.body.classList.contains('strategy-page');
 const getStrategyCode=()=>window.quantstoneEditor?.getValue()??$('strategy').value;
 const setStrategyCode=value=>{if(window.quantstoneEditor)window.quantstoneEditor.setValue(value);else $('strategy').value=value;};
@@ -32,7 +34,19 @@ function renderStrategyList(){
   });
   const body=$('strategy-list');body.replaceChildren();$('strategy-empty').hidden=filtered.length>0;
   $('list-count').textContent=`显示 ${filtered.length} 个策略 / 共 ${strategies.length} 个`;
-  for(const item of filtered){
+  const folders=new Map();
+  for(const item of filtered){const folder=item.folder||'默认目录';if(!folders.has(folder))folders.set(folder,[]);folders.get(folder).push(item);}
+  for(const [folder,items] of [...folders.entries()].sort((a,b)=>a[0].localeCompare(b[0],'zh-CN'))){
+    const folderRow=document.createElement('tr');folderRow.className='folder-row';folderRow.tabIndex=0;
+    const folderCell=document.createElement('td');folderCell.colSpan=6;
+    const folderButton=document.createElement('button');folderButton.type='button';folderButton.className='folder-toggle';
+    const collapsed=collapsedFolders.has(folder);folderButton.setAttribute('aria-expanded',String(!collapsed));
+    folderButton.append(node('span','folder-caret',collapsed?'›':'⌄'),node('span','folder-icon','▰'),node('span','folder-name',folder),node('span','folder-count',String(items.length)));
+    const toggle=()=>{collapsedFolders.has(folder)?collapsedFolders.delete(folder):collapsedFolders.add(folder);try{localStorage.setItem('quantstone.strategyFolders.collapsed',JSON.stringify([...collapsedFolders]));}catch{}renderStrategyList();};
+    folderButton.onclick=toggle;folderRow.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}};
+    folderCell.append(folderButton);folderRow.append(folderCell);body.append(folderRow);
+    if(collapsed)continue;
+    for(const item of items){
     const tr=document.createElement('tr');tr.className='strategy-row';tr.tabIndex=0;tr.setAttribute('aria-label',`进入策略：${item.name}`);tr.onclick=()=>location.assign(`/strategies/${item.id}`);tr.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();tr.click();}};
     const first=document.createElement('td'),wrap=node('div','strategy-name'),content=document.createElement('div'),open=document.createElement('a');
     open.textContent=item.name;open.href=`/strategies/${item.id}`;open.onclick=event=>event.stopPropagation();content.append(open,node('p','',item.description||'暂无策略说明'));wrap.append(content);first.append(wrap);
@@ -42,6 +56,7 @@ function renderStrategyList(){
     const count=node('td','',String(item.run_count));
     const updated=node('td','',shortDate(item.updated_at));
     tr.append(first,meta,tags,recent,count,updated);body.append(tr);
+    }
   }
 }
 function renderStats(){
@@ -77,7 +92,7 @@ async function openStrategy(identifier){
 function markDirty(){dirty=true;$('save-state').textContent='未保存';$('save-state').hidden=false;$('save-state').classList.add('unsaved');}
 async function saveStrategy(){
   if(!currentStrategy)return;
-  const payload={name:currentStrategy.name,description:currentStrategy.description,market:currentStrategy.market,instrument_type:currentStrategy.instrument_type,frequency:currentStrategy.frequency,tags:currentStrategy.tags,code:getStrategyCode(),status:currentStrategy.status};
+  const payload={name:currentStrategy.name,description:currentStrategy.description,market:currentStrategy.market,instrument_type:currentStrategy.instrument_type,frequency:currentStrategy.frequency,folder:currentStrategy.folder,tags:currentStrategy.tags,code:getStrategyCode(),status:currentStrategy.status};
   currentStrategy=await api(`/api/strategies/${currentStrategy.id}`,{method:'PUT',body:JSON.stringify(payload)});
   dirty=false;$('save-state').hidden=true;$('save-state').classList.remove('unsaved');
 }
@@ -187,7 +202,7 @@ $('strategy-form').onsubmit=async event=>{
   event.preventDefault();
   try{
     if(!exampleCode)exampleCode=(await api('/api/example')).strategy;
-    const created=await api('/api/strategies',{method:'POST',body:JSON.stringify({name:$('new-name').value.trim(),description:$('new-description').value.trim(),instrument_type:$('new-instrument').value,market:$('new-market').value,frequency:$('new-frequency').value,tags:$('new-tags').value.split(/[,，]/).map(x=>x.trim()).filter(Boolean),code:exampleCode})});
+    const created=await api('/api/strategies',{method:'POST',body:JSON.stringify({name:$('new-name').value.trim(),folder:$('new-folder').value.trim(),description:$('new-description').value.trim(),instrument_type:$('new-instrument').value,market:$('new-market').value,frequency:$('new-frequency').value,tags:$('new-tags').value.split(/[,，]/).map(x=>x.trim()).filter(Boolean),code:exampleCode})});
     dialog.close();await loadStrategies();location.assign(`/strategies/${created.id}`);
   }catch(e){error(e.message);}
 };

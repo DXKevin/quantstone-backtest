@@ -35,6 +35,9 @@ class Account:
 
     def reserve(self, order: Order):
         if order.side == "buy":
+            if order.sizing == "all_cash":
+                self.reservations[order.id] = self.available_cash
+                return
             price = order.limit_price or order.reference_price
             amount = money(price * order.quantity)
             required = amount + self.fees.total("buy", amount)

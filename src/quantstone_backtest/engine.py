@@ -54,6 +54,14 @@ class Context:
         reference = self._engine.last_prices.get(symbol)
         return self._engine.exchange.submit(symbol, side, quantity, self.now, reference, limit_price)
 
+    def order_all(self, symbol, side):
+        """Buy the maximum whole lots at the next open, or sell all sellable shares."""
+        if self._engine.finishing:
+            raise ValueError("回测结束阶段不能下单")
+        symbol = self._engine.ensure_symbol(symbol)
+        reference = self._engine.last_prices.get(symbol)
+        return self._engine.exchange.submit_all(symbol, side, self.now, reference)
+
     def cancel(self, order_id):
         return self._engine.exchange.cancel(order_id, self.now)
 

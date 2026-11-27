@@ -46,6 +46,48 @@ class MatchingEngine:
         self.reports.append(("order", replace(order)))
         return order.id
 
+    def submit_all(self, symbol, side, timestamp, reference_price) -> str:
+        """Submit an order whose buy size is resolved from cash at the actual opening price."""
+        if side == "sell":
+            position = self.account.positions.get(symbol)
+            quantity = position.available if position else 0
+            if quantity <= 0:
+                raise ValueError("没有可卖持仓")
+            return self.submit(symbol, side, quantity, timestamp, reference_price)
+        if side != "buy":
+            raise ValueError("side 必须是 buy 或 sell")
+        reference = decimal(reference_price) if reference_price is not None else None
+        order = Order(
+            f"O{len(self.orders) + 1:06d}", symbol, side, 0, timestamp,
+            reference or ZERO, sizing="all_cash",
+        )
+        self.orders[order.id] = order
+        try:
+            if len(self.orders) > 100_000:
+                raise ValueError("单次回测订单超过上限")
+            if reference is None or reference <= ZERO:
+                raise ValueError("无已知参考价，请先等待行情")
+            if self.account.available_cash <= ZERO:
+                raise ValueError("没有可用资金")
+            self.account.reserve(order)
+        except ValueError as exc:
+            order.status = "rejected"
+            order.reason = str(exc)
+        order.updated_at = timestamp
+        self.reports.append(("order", replace(order)))
+        return order.id
+
+    def _all_cash_quantity(self, order, price):
+        usable = self.account.available_cash + self.account.reservations.get(order.id, ZERO)
+        lots = int(usable / (price * 100))
+        while lots > 0:
+            quantity = lots * 100
+            notional = money(price * quantity)
+            if notional + self.account.fees.total("buy", notional) <= usable:
+                return quantity
+            lots -= 1
+        return 0
+
     def cancel(self, order_id, timestamp):
         order = self.orders.get(order_id)
         if order is None:
@@ -77,6 +119,11 @@ class MatchingEngine:
                 continue
             if order.side == "sell" and bar.lower_limit is not None and price <= bar.lower_limit:
                 continue
+            if order.sizing == "all_cash":
+                order.quantity = self._all_cash_quantity(order, price)
+                if order.quantity == 0:
+                    self._finish(order, "rejected", "可用资金不足以买入一手", timestamp)
+                    continue
             if not self.account.can_pay(order, price):
                 self._finish(order, "rejected", "开盘价格变化后资金不足", timestamp)
                 continue

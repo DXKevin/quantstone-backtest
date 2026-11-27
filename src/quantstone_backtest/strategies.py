@@ -22,10 +22,11 @@ class StrategyInput(BaseModel):
     instrument_type: Literal["stock"] = "stock"
     market: Literal["A股"] = "A股"
     frequency: str = Field(default="日线", max_length=30)
+    folder: str = Field(default="默认目录", max_length=120)
     tags: list[str] = Field(default_factory=list, max_length=8)
     code: str = Field(min_length=1, max_length=200_000)
 
-    @field_validator("name", "description", "market", "frequency", mode="before")
+    @field_validator("name", "description", "market", "frequency", "folder", mode="before")
     @classmethod
     def strip_text(cls, value):
         return value.strip() if isinstance(value, str) else value
@@ -34,6 +35,16 @@ class StrategyInput(BaseModel):
     @classmethod
     def clean_tags(cls, tags):
         return list(dict.fromkeys(tag.strip()[:24] for tag in tags if tag.strip()))
+
+    @field_validator("folder")
+    @classmethod
+    def clean_folder(cls, value):
+        parts = [part.strip() for part in value.replace("\\", "/").split("/") if part.strip()]
+        if not parts:
+            return "默认目录"
+        if any(part in {".", ".."} for part in parts):
+            raise ValueError("策略目录不能包含 . 或 ..")
+        return "/".join(parts)
 
 
 class StrategyUpdate(StrategyInput):
@@ -81,6 +92,7 @@ class StrategyStore:
         with self.lock:
             item = read_json(self.path(identifier))
             item.setdefault("instrument_type", "stock")
+            item.setdefault("folder", "默认目录")
             return item
 
     def create(self, value: StrategyInput) -> dict:

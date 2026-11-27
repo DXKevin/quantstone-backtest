@@ -1,11 +1,10 @@
 """日K MA5 收盘价突破策略。
 
-已完成日K收盘价向上突破 MA5 时买入 100 股，向下跌破时卖出全部可卖持仓。
+已完成日K收盘价向上突破 MA5 时全仓买入，向下跌破时清仓。
 信号在收盘后产生，订单由回测引擎在下一根 K 线开盘尝试成交。
 """
 
 SYMBOL = "000001.SZ"
-ORDER_SIZE = 100
 
 
 def init(context):
@@ -38,13 +37,13 @@ def handle_bar(context):
     sellable = position["sellable"] if position else 0
 
     if not was_above and is_above and quantity == 0:
-        context.order(SYMBOL, "buy", ORDER_SIZE)
+        context.order_all(SYMBOL, "buy")
         context.log(
             f"向上突破 MA5：close={current_close}, ma5={current_ma5}; "
-            f"买入 {ORDER_SIZE} 股"
+            "按下一根日K开盘价全仓买入"
         )
     elif was_above and not is_above and sellable > 0:
-        context.order(SYMBOL, "sell", sellable)
+        context.order_all(SYMBOL, "sell")
         context.log(
             f"向下跌破 MA5：close={current_close}, ma5={current_ma5}; "
             f"卖出 {sellable} 股"
