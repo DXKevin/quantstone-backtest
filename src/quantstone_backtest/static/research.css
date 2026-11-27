@@ -1,0 +1,62 @@
+/* QuantStone research terminal — approved graphite / light workspace theme. */
+:root{--navy:#20252e;--navy2:#263346;--blue:#3569db;--blue-soft:#dde6f7;--ink:#263346;--muted:#647184;--line:#dce1e8;--bg:#f4f5f7;--shadow:none}
+html{font-size:16px}
+.topbar{height:54px;padding:0 20px;box-shadow:none}
+.brand{min-width:285px;font-size:19px;gap:10px}
+.brand-mark{height:25px;width:25px;border-radius:4px;background:#527ee4;font-size:11px}
+.brand>span:last-child{display:flex;align-items:center;gap:15px}
+.brand small{font-size:10px;color:#a5aebc;letter-spacing:2px;margin:0}
+.topbar nav a{font-size:14px}.topbar nav a.active:after{display:none}
+.topbar-meta{font-size:12px}.system-dot{box-shadow:none;width:5px;height:5px}
+.app-shell{grid-template-columns:190px minmax(0,1fr);min-height:calc(100vh - 54px)}
+.sidebar{background:#eceef2;padding:23px 10px 16px;border-color:#dce0e6;gap:3px}
+.nav-caption{font-size:10px;letter-spacing:1.8px;color:#798596;margin:10px 12px 12px}
+.nav-caption:not(:first-child){margin-top:34px}
+.side-item{border-radius:5px;padding:10px 14px;min-height:38px;font-size:14px;color:#526174}
+.side-item svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5}
+.side-item[data-scope]{padding-left:40px;position:relative}
+.side-item[data-scope]:before{content:"";position:absolute;left:16px;width:14px;height:10px;border:1px solid #8d98a9;border-radius:2px}
+.side-item[data-scope][aria-pressed=true]{color:var(--blue)}
+.side-item:hover{background:#e1e6ee}
+.side-bottom{padding:18px 12px 4px;font-size:12px}.side-bottom small{font-size:12px}
+main{padding:28px 34px 40px;max-width:none}
+.breadcrumb{font-size:12px;color:#7c8797;margin:0 0 27px}
+.page-heading{align-items:center;margin-bottom:28px}
+.page-heading h1{font-size:25px;letter-spacing:0}.subhead{font-size:14px;margin-top:9px}
+.primary,.secondary{border-radius:5px;font-size:14px;padding:8px 14px;box-shadow:none;font-weight:500}
+.research-tabs{display:flex;align-items:center;gap:28px;border-bottom:1px solid var(--line);margin-bottom:20px;min-height:40px}
+.research-tabs button{position:relative;background:none;border:0;padding:0 0 14px;font-size:14px;color:#647184}
+.research-tabs button span{font-size:12px;color:#8994a3;margin-left:8px;font-variant-numeric:tabular-nums}
+.research-tabs button[aria-pressed=true]{color:#263346;font-weight:650}
+.research-tabs button[aria-pressed=true]:after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--blue)}
+.research-summary{margin-left:auto;padding-bottom:14px;color:#8a94a3;font-size:12px}
+.strategy-card{background:transparent;border:0;border-radius:0;box-shadow:none}
+.toolbar{padding:0 0 18px;border:0;align-items:center}
+.search-box{width:min(340px,42%);border-radius:4px}
+.search-box input{padding:8px 8px 8px 0;font-size:14px}
+.filters select{font-size:14px;padding:8px 25px 8px 10px;border-radius:4px}
+.strategy-table-wrap{position:relative;border:1px solid var(--line);border-radius:5px;background:white}
+.strategy-table{min-width:980px}
+.strategy-table th{padding:12px 18px;background:#f8f9fb;font-size:12px;font-weight:500}
+.strategy-table td{padding:12px 18px;height:61px;font-size:14px;border-color:#edf0f4}
+.strategy-table tbody tr:last-child td{border-bottom:0}
+.strategy-table tbody tr:hover{background:#f6f9ff}
+.strategy-name{min-width:235px}.strategy-name button{font-size:14px;font-weight:600}
+.strategy-name p{font-size:12px;margin-top:6px;max-width:320px;color:#8490a0}
+.chip{font-size:12px;border-radius:3px;padding:2px 6px;background:#f2f4f7}
+.chip.blue{color:#647184;background:transparent;padding-left:0}
+.run-state{font-size:14px;white-space:nowrap}.run-state:before{width:5px;height:5px}
+.row-action{font-size:14px;font-weight:500}
+.strategy-table td:nth-child(5),.strategy-table td:nth-child(6){font-variant-numeric:tabular-nums;white-space:nowrap}
+.list-footer{display:flex;justify-content:space-between;gap:16px;margin-top:15px;color:#8a94a3;font-size:12px}
+.panel{border-radius:5px;box-shadow:none}
+.workbench-heading{gap:12px}.workbench-title h1{font-size:21px}
+.workbench-tabs button,.tabs button{font-size:14px}
+.form-grid label{font-size:12px}.panel-heading small,.hint,.editor-footer{font-size:12px}
+.strategy-panel textarea{background:#20252e;font-size:14px}.editor-footer{background:#282f39}
+.metrics strong{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.table-container table{font-size:14px}.table-container td{white-space:nowrap}
+.empty-state{padding:65px 24px}.empty-state p{font-size:14px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+@media(max-width:1100px){main{padding:25px 24px}.app-shell{grid-template-columns:160px minmax(0,1fr)}.side-item{font-size:14px;justify-content:flex-start}.side-bottom{display:flex}.toolbar{align-items:stretch}.search-box{width:100%}.side-item[data-scope]{padding-left:35px}}
+@media(max-width:700px){.topbar{padding:0 15px}.brand{min-width:auto}.brand>span:last-child{display:none}.app-shell{display:block}.sidebar{display:none}main{padding:22px 14px}.breadcrumb{margin-bottom:20px}.page-heading{gap:12px;align-items:flex-start}.page-heading h1{font-size:23px}.subhead{font-size:13px;max-width:205px}.primary{white-space:nowrap}.research-tabs{gap:20px;flex-wrap:wrap}.research-summary{display:none}.toolbar{flex-direction:column}.filters{display:flex;flex-wrap:wrap}.filters label{flex:1}.filters select{font-size:13px}.strategy-table{min-width:730px}.list-footer{flex-wrap:wrap}.workbench-actions{flex-wrap:wrap}}

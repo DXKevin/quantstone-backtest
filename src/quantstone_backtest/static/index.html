@@ -2,31 +2,35 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略研究</title><link rel="stylesheet" href="/styles.css"><script defer src="/app.js"></script>
+  <title>QuantStone · 策略研究</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/research.css"><script defer src="/app.js"></script>
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="#" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a>
-  <nav><a class="active" href="#">策略研究</a><a href="#" data-coming>绩效分析</a><a href="#" data-coming>数据中心</a></nav>
+  <nav><a class="active" href="#" id="workspace-home">研究工作区</a></nav>
   <div class="topbar-meta"><span class="system-dot"></span> 本地研究环境</div>
 </header>
 <div class="app-shell">
 <aside class="sidebar" aria-label="研究导航">
-  <button class="side-item active"><span>⌁</span>策略研究</button>
-  <button class="side-item" data-coming><span>↗</span>绩效分析</button>
-  <button class="side-item" data-coming><span>◫</span>数据管理</button>
-  <div class="side-bottom"><span>v0.1</span><small>Python engine</small></div>
+  <p class="nav-caption">WORKSPACE</p>
+  <button class="side-item active" id="research-home"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>策略研究</button>
+  <p class="nav-caption">COLLECTIONS</p>
+  <button class="side-item" data-scope="all">全部策略</button>
+  <button class="side-item" data-scope="running">运行中</button>
+  <button class="side-item" data-scope="archived">已归档</button>
+  <div class="side-bottom"><span>策略研究</span><small>v0.1</small></div>
 </aside>
 <main>
 <div id="notice" role="alert" hidden></div>
 <section id="strategy-view" class="view">
-  <div class="page-heading"><div><p class="eyebrow">STRATEGY RESEARCH</p><h1>策略研究</h1><p class="subhead">集中管理策略代码、研究标签与历史回测。</p></div><button id="new-strategy-button" class="primary"><span>＋</span> 新建策略</button></div>
-  <section class="stat-grid" aria-label="策略概览">
-    <article><span>策略总数</span><strong id="strategy-total">—</strong><small>研究资产</small></article>
-    <article><span>启用中</span><strong id="strategy-active">—</strong><small>可继续研究</small></article>
-    <article><span>累计回测</span><strong id="run-total">—</strong><small>全部策略</small></article>
-    <article><span>正在运行</span><strong id="run-running">—</strong><small>后台任务</small></article>
-  </section>
+  <p class="breadcrumb">工作区 / 策略研究</p>
+  <div class="page-heading"><div><h1>策略研究</h1><p class="subhead">从策略假设到历史验证，管理每一次研究。</p></div><button id="new-strategy-button" class="primary"><span>＋</span> 新建策略</button></div>
+  <div class="research-tabs" aria-label="策略分类">
+    <button data-scope="all" aria-pressed="true">全部策略 <span id="strategy-total">—</span></button>
+    <button data-scope="running" aria-pressed="false">运行中 <span id="run-running">—</span></button>
+    <button data-scope="archived" aria-pressed="false">已归档 <span id="strategy-archived">—</span></button>
+    <span class="research-summary">启用 <span id="strategy-active">—</span> · 累计回测 <span id="run-total">—</span></span>
+  </div>
   <section class="strategy-card">
     <div class="toolbar">
       <div class="search-box"><span>⌕</span><label class="sr-only" for="strategy-search">搜索策略</label><input id="strategy-search" type="search" placeholder="搜索策略名称、说明或标签"></div>
@@ -37,6 +41,7 @@
       <div id="strategy-empty" class="empty-state" hidden><div>⌁</div><strong>没有找到策略</strong><p>调整筛选条件，或创建一个新策略。</p></div>
     </div>
   </section>
+  <div class="list-footer"><span id="list-count"></span><span>按最后修改时间排序 · 回测状态来自真实任务</span></div>
 </section>
 
 <section id="workbench-view" class="view" hidden>

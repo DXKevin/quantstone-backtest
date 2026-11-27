@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 const states = {running:'运行中',completed:'已完成',failed:'失败',cancelled:'已取消',interrupted:'已中断'};
 const fields = ['name','source','frequency','minute_label','start','end','initial_cash','commission_rate','minimum_commission','sell_tax_rate','transfer_rate'];
 let strategies = [], currentStrategy = null, selected = null, job = null, timer = null, activeTab = 'positions', exampleCode = '', dirty = false;
+let scope = 'all';
 
 function error(message){$('notice').textContent=message;$('notice').hidden=!message;if(message)scrollTo({top:0,behavior:'smooth'});}
 async function api(path, options={}){
@@ -23,25 +24,28 @@ function renderStrategyList(){
   const query=$('strategy-search').value.trim().toLowerCase(),market=$('market-filter').value,frequency=$('frequency-filter').value,status=$('status-filter').value;
   const filtered=strategies.filter(item=>{
     const haystack=[item.name,item.description,...item.tags].join(' ').toLowerCase();
-    return (!query||haystack.includes(query))&&(!market||item.market===market)&&(!frequency||item.frequency===frequency)&&(!status||item.status===status);
+    const inScope=scope==='all'||(scope==='running'?item.last_run?.status==='running':item.status==='archived');
+    return inScope&&(!query||haystack.includes(query))&&(!market||item.market===market)&&(!frequency||item.frequency===frequency)&&(!status||item.status===status);
   });
   const body=$('strategy-list');body.replaceChildren();$('strategy-empty').hidden=filtered.length>0;
+  $('list-count').textContent=`显示 ${filtered.length} 个策略 / 共 ${strategies.length} 个`;
   for(const item of filtered){
     const tr=document.createElement('tr');
-    const first=document.createElement('td'),wrap=node('div','strategy-name'),icon=node('span','strategy-icon','⌁'),content=document.createElement('div'),open=document.createElement('button');
-    open.textContent=item.name;open.onclick=()=>openStrategy(item.id);content.append(open,node('p','',item.description||'暂无策略说明'));wrap.append(icon,content);first.append(wrap);
+    const first=document.createElement('td'),wrap=node('div','strategy-name'),content=document.createElement('div'),open=document.createElement('button');
+    open.textContent=item.name;open.onclick=()=>openStrategy(item.id);content.append(open,node('p','',item.description||'暂无策略说明'));wrap.append(content);first.append(wrap);
     const meta=document.createElement('td'),metaWrap=node('div','metadata');metaWrap.append(node('span','chip blue',item.market),node('span','chip',item.frequency));meta.append(metaWrap);
     const tags=document.createElement('td'),tagWrap=node('div','tag-list');(item.tags.length?item.tags:['未标记']).forEach(tag=>tagWrap.append(node('span','chip',tag)));tags.append(tagWrap);
     const recent=document.createElement('td'),state=strategyStatus(item.last_run),stateNode=node('span',`run-state ${state.className}`,state.label);recent.append(stateNode);
     const count=node('td','',String(item.run_count));
     const updated=node('td','',shortDate(item.updated_at));
-    const action=document.createElement('td'),button=node('button','row-action','打开 →');button.onclick=()=>openStrategy(item.id);action.append(button);
+    const action=document.createElement('td'),button=node('button','row-action','打开');button.onclick=()=>openStrategy(item.id);action.append(button);
     tr.append(first,meta,tags,recent,count,updated,action);body.append(tr);
   }
 }
 function renderStats(){
   $('strategy-total').textContent=strategies.length;
   $('strategy-active').textContent=strategies.filter(x=>x.status==='active').length;
+  $('strategy-archived').textContent=strategies.filter(x=>x.status==='archived').length;
   $('run-total').textContent=strategies.reduce((sum,x)=>sum+x.run_count,0);
   $('run-running').textContent=strategies.filter(x=>x.last_run?.status==='running').length;
 }
@@ -140,6 +144,15 @@ $('source').onchange=()=>{$('source-note').textContent=$('source').value==='demo
 $('help-button').onclick=()=>{$('help').open=!$('help').open;};
 $('back-button').onclick=()=>{if(dirty&&!confirm('当前代码尚未保存，仍要返回策略列表吗？'))return;showView('strategies');};
 $('brand-home').onclick=event=>{event.preventDefault();$('back-button').click();};
+$('workspace-home').onclick=$('brand-home').onclick;
+$('research-home').onclick=()=>$('back-button').click();
+document.querySelectorAll('[data-scope]').forEach(button=>button.onclick=()=>{
+  if(dirty&&!$('workbench-view').hidden&&!confirm('当前代码尚未保存，仍要返回策略列表吗？'))return;
+  scope=button.dataset.scope;
+  $('status-filter').value='';
+  document.querySelectorAll('[data-scope]').forEach(item=>item.setAttribute('aria-pressed',String(item.dataset.scope===scope)));
+  showView('strategies');renderStrategyList();
+});
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));detail();});
 document.querySelectorAll('[data-worktab]').forEach(b=>b.onclick=()=>setWorktab(b.dataset.worktab));
 document.querySelectorAll('[data-coming]').forEach(item=>item.onclick=event=>{event.preventDefault();error('该模块将在后续版本开放。');});
