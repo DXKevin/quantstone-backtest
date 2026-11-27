@@ -50,9 +50,10 @@ def test_sdk_reads_daily_and_minutes():
     assert bundle.bars[0].upper_limit == Decimal(11)
 
 
-def test_corporate_action_fails_explicitly():
-    with pytest.raises(ValueError, match='复权因子变化'):
-        sdk_data(Client(changed=True), date(2026, 11, 2), date(2026, 11, 3), ['000001.SZ'], '1d')
+def test_corporate_action_is_exposed_as_reinvestment_ratio():
+    bundle = sdk_data(Client(changed=True), date(2026, 11, 2), date(2026, 11, 3), ['000001.SZ'], '1d')
+    changed = next(bar for bar in bundle.bars if bar.start.date() == date(2026, 11, 3))
+    assert changed.adjustment_ratio == Decimal('2')
 
 
 def test_missing_minute_days_fail():

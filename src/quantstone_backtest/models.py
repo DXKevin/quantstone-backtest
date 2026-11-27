@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 ZERO = Decimal("0")
 CENT = Decimal("0.01")
+SHARE = Decimal("0.000001")
 
 
 def decimal(value: Any) -> Decimal:
@@ -21,6 +22,16 @@ def decimal(value: Any) -> Decimal:
 
 def money(value: Any) -> Decimal:
     return decimal(value).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def shares(value: Any) -> Decimal:
+    """Company-action share precision; regular orders remain integer-valued."""
+    return decimal(value).quantize(SHARE, rounding=ROUND_HALF_UP)
+
+
+def display_shares(value: Any) -> int | Decimal:
+    value = decimal(value)
+    return int(value) if value == value.to_integral() else value.normalize()
 
 
 def jsonable(value: Any) -> Any:
@@ -52,6 +63,7 @@ class Bar:
     frequency: str = "1d"
     upper_limit: Decimal | None = None
     lower_limit: Decimal | None = None
+    adjustment_ratio: Decimal = Decimal("1")
 
     def __post_init__(self):
         if self.start.tzinfo is None or self.end.tzinfo is None or self.start >= self.end:
@@ -65,6 +77,9 @@ class Bar:
         for name in ("upper_limit", "lower_limit"):
             if getattr(self, name) is not None:
                 object.__setattr__(self, name, decimal(getattr(self, name)))
+        object.__setattr__(self, "adjustment_ratio", decimal(self.adjustment_ratio))
+        if self.adjustment_ratio <= ZERO:
+            raise ValueError("复权比例必须大于零")
         if self.low <= ZERO or self.high < max(self.open, self.close) or self.low > min(self.open, self.close):
             raise ValueError("非法 OHLC 价格")
         if self.volume < 0:
@@ -101,13 +116,13 @@ class Order:
     id: str
     symbol: str
     side: str
-    quantity: int
+    quantity: int | Decimal
     created_at: datetime
     reference_price: Decimal
     limit_price: Decimal | None = None
     status: str = "accepted"
     reason: str = ""
-    filled_quantity: int = 0
+    filled_quantity: int | Decimal = 0
     updated_at: datetime | None = None
     sizing: str = "fixed"
 
@@ -118,7 +133,7 @@ class Fill:
     order_id: str
     symbol: str
     side: str
-    quantity: int
+    quantity: int | Decimal
     price: Decimal
     timestamp: datetime
     fees: dict[str, Decimal]
@@ -127,21 +142,21 @@ class Fill:
 @dataclass
 class Position:
     symbol: str
-    quantity: int = 0
-    settled: int = 0
-    frozen: int = 0
+    quantity: Decimal = ZERO
+    settled: Decimal = ZERO
+    frozen: Decimal = ZERO
     cost: Decimal = ZERO  # total remaining cost, including acquisition fees
     price: Decimal = ZERO
 
     @property
-    def available(self) -> int:
+    def available(self) -> Decimal:
         return self.settled - self.frozen
 
     def snapshot(self) -> dict:
         value = money(self.price * self.quantity)
         return {
-            "symbol": self.symbol, "quantity": self.quantity, "sellable": self.available,
-            "frozen": self.frozen, "cost": self.cost,
+            "symbol": self.symbol, "quantity": display_shares(self.quantity),
+            "sellable": display_shares(self.available), "frozen": display_shares(self.frozen), "cost": self.cost,
             "average_cost": self.cost / self.quantity if self.quantity else ZERO,
             "price": self.price, "market_value": value, "unrealized_pnl": value - self.cost,
         }

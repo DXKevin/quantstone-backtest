@@ -124,6 +124,41 @@ def test_order_all_uses_actual_next_open_and_whole_lots():
     assert D(result['account']['cash']) == 2700
 
 
+def test_corporate_action_reinvests_into_fractional_shares_and_can_sell_all():
+    def handle(c, bars):
+        if c.now.day == 2:
+            c.order(S, 'buy', 100)
+        elif c.now.day == 4:
+            c.order_all(S, 'sell')
+
+    result = Engine(
+        [bar(2), bar(3), bar(4, 9.95, adjustment_ratio=D('1.005')), bar(5, 9.95)],
+        SimpleNamespace(handle_bar=handle), fees=FREE, initial_cash=2000,
+    ).run()
+    assert [trade['quantity'] for trade in result['trades']] == [100, '100.5']
+    assert result['account']['positions'] == []
+    assert result['corporate_actions'] == [{
+        'symbol': S, 'ratio': '1.005', 'quantity_before': 100,
+        'quantity_after': '100.5', 'date': '2026-11-04',
+    }]
+
+
+def test_corporate_action_cancels_pre_action_pending_order():
+    def handle(c, bars):
+        if c.now.day == 1:
+            c.order(S, 'buy', 100)
+        elif c.now.day == 3:
+            c.order(S, 'sell', 100, limit_price=20)
+
+    result = Engine(
+        [bar(1), bar(2), bar(3), bar(4, adjustment_ratio=D('1.1'))],
+        SimpleNamespace(handle_bar=handle), fees=FREE, initial_cash=2000,
+    ).run()
+    assert result['orders'][1]['status'] == 'cancelled'
+    assert result['orders'][1]['reason'] == '公司行动生效，原委托已取消'
+    assert result['account']['positions'][0]['quantity'] == 110
+
+
 def test_order_all_includes_fees_when_sizing():
     def handle(c, bars):
         if c.now.day == 2:

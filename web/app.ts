@@ -1,6 +1,6 @@
 type RunStatus = "running" | "completed" | "failed" | "cancelled" | "interrupted" | string;
 type StrategyScope = "all" | "running" | "archived";
-type DetailTab = "positions" | "orders" | "trades" | "logs";
+type DetailTab = "positions" | "orders" | "trades" | "actions" | "logs";
 type WorkTab = "code" | "results" | "history";
 type Row = Record<string, any>;
 
@@ -17,7 +17,7 @@ interface BacktestResult extends Row {
   metrics: {total_return: string; max_drawdown: string; trade_count: number};
   account: Row & {initial_cash: string; available_cash: string; market_value: string; equity: string; realized_pnl: string; unrealized_pnl: string; total_pnl: string; total_fees: string; net_value: string; positions: Row[]};
   equity_curve: Array<{date: string; net_value: string}>;
-  orders: Row[]; trades: Row[]; logs: Array<{time: string; message: string}>; data?: {note?: string};
+  orders: Row[]; trades: Row[]; corporate_actions: Row[]; logs: Array<{time: string; message: string}>; data?: {note?: string};
 }
 interface Job extends RunSummary {
   progress?: {stage?: string; completed?: number; total?: number; date?: string};
@@ -214,6 +214,7 @@ function detail() {
   if (activeTab === "positions") table(target, [["股票", row => row.symbol], ["持仓", row => row.quantity], ["可卖", row => row.sellable], ["成本价", row => fmt(row.average_cost, 4)], ["市值", row => fmt(row.market_value)], ["浮动盈亏", row => fmt(row.unrealized_pnl)]], result?.account.positions || []);
   if (activeTab === "orders") table(target, [["订单", row => row.id], ["股票", row => row.symbol], ["方向", row => row.side === "buy" ? "买入" : "卖出"], ["数量", row => row.quantity], ["状态", row => orderState[row.status] || row.status], ["提交时间", row => row.created_at], ["原因", row => row.reason]], result?.orders || []);
   if (activeTab === "trades") table(target, [["成交", row => row.id], ["股票", row => row.symbol], ["方向", row => row.side === "buy" ? "买入" : "卖出"], ["数量", row => row.quantity], ["价格", row => fmt(row.price)], ["费用", row => fmt(Object.values(row.fees as Record<string, string>).reduce((sum, value) => sum + Number(value), 0))], ["成交时间", row => row.timestamp]], result?.trades || []);
+  if (activeTab === "actions") table(target, [["生效日期", row => row.date], ["股票", row => row.symbol], ["复权比例", row => fmt(row.ratio, 6)], ["调整前持股", row => row.quantity_before], ["调整后持股", row => row.quantity_after], ["处理方式", () => "分红再投资"]], result?.corporate_actions || []);
 }
 function render() {
   if (!job) return; $("status").textContent = states[job.status] || job.status; $("status").className = `status ${job.status}`; $("result-name").textContent = job.name;

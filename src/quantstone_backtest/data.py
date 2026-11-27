@@ -27,7 +27,7 @@ def as_date(value):
     return value if isinstance(value, date) else date.fromisoformat(str(value))
 
 
-def row_bar(row, frequency, limits=None, minute_label="start"):
+def row_bar(row, frequency, limits=None, minute_label="start", adjustment_ratio=Decimal("1")):
     day = as_date(row["trade_date"])
     if frequency == "1d":
         start, end = datetime.combine(day, time(9, 30), SHANGHAI), datetime.combine(day, time(15), SHANGHAI)
@@ -50,7 +50,8 @@ def row_bar(row, frequency, limits=None, minute_label="start"):
         raise ValueError("行情成交量为空")
     limit = (limits or {}).get((row["ts_code"], day), {})
     return Bar(row["ts_code"], start, end, *(decimal(row[k]) for k in ("open", "high", "low", "close")),
-               int(decimal(volume) * 100), frequency, limit.get("up_limit"), limit.get("down_limit"))
+               int(decimal(volume) * 100), frequency, limit.get("up_limit"), limit.get("down_limit"),
+               adjustment_ratio)
 
 
 def demo_data(start, end, symbols, frequency):
@@ -107,16 +108,17 @@ def sdk_data(client, start, end, symbols, frequency, progress=None, minute_label
         last_factor = None
         for row in sorted(daily, key=lambda r: as_date(r["trade_date"])):
             day = as_date(row["trade_date"])
+            ratio = Decimal("1")
             if day >= start:
                 if day not in factors:
                     raise ValueError(f"缺少复权因子：{symbol} {day}")
-                if last_factor is not None and factors[day] != last_factor:
-                    raise ValueError(f"{symbol} {day} 存在复权因子变化；本版尚未实现公司行动记账，请缩短区间")
+                if last_factor is not None:
+                    ratio = factors[day] / last_factor
                 limit = limits.get((symbol, day))
                 if not limit or limit.get("up_limit") is None or limit.get("down_limit") is None:
                     raise ValueError(f"缺少涨跌停价格：{symbol} {day}")
             last_factor = factors.get(day, last_factor)
-            bars.append(row_bar(row, "1d", limits))
+            bars.append(row_bar(row, "1d", limits, adjustment_ratio=ratio))
         if frequency == "1m":
             cursor = start
             while cursor <= end:
@@ -143,5 +145,5 @@ def sdk_data(client, start, end, symbols, frequency, progress=None, minute_label
         "source": "sdk", "datasets": [DAILY, CALENDAR, LIMITS, FACTORS] + ([MINUTE] if frequency == "1m" else []),
         "price_basis": "raw", "timezone": "Asia/Shanghai", "minute_timestamp": minute_label,
         "skipped_0930_rows": skipped_opening_rows,
-        "note": f"未复权行情；公司行动区间暂不支持。分钟标签={minute_label}，跳过09:30记录 {skipped_opening_rows} 条；无逐笔流动性模拟。",
+        "note": f"未复权行情；复权因子变化按分红再投资调整持股数量（允许小数股）。分钟标签={minute_label}，跳过09:30记录 {skipped_opening_rows} 条；无逐笔流动性模拟。",
     })

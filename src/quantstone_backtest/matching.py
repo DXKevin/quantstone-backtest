@@ -4,7 +4,7 @@ from collections import deque
 from dataclasses import replace
 
 from .account import Account
-from .models import Bar, Fill, Order, ZERO, decimal, money
+from .models import Bar, Fill, Order, ZERO, decimal, display_shares, money
 
 
 class MatchingEngine:
@@ -16,10 +16,12 @@ class MatchingEngine:
         self.fills: list[Fill] = []
         self.reports = deque()
 
-    def submit(self, symbol, side, quantity, timestamp, reference_price, limit_price=None) -> str:
+    def submit(self, symbol, side, quantity, timestamp, reference_price, limit_price=None, *, allow_fractional=False) -> str:
         if side not in ("buy", "sell"):
             raise ValueError("side 必须是 buy 或 sell")
-        if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0:
+        if allow_fractional and not isinstance(quantity, int):
+            quantity = decimal(quantity)
+        if isinstance(quantity, bool) or (not allow_fractional and not isinstance(quantity, int)) or quantity <= 0:
             raise ValueError("quantity 必须为正整数股数")
         price = decimal(limit_price) if limit_price is not None else None
         if price is not None and price <= ZERO:
@@ -50,10 +52,10 @@ class MatchingEngine:
         """Submit an order whose buy size is resolved from cash at the actual opening price."""
         if side == "sell":
             position = self.account.positions.get(symbol)
-            quantity = position.available if position else 0
+            quantity = display_shares(position.available) if position else 0
             if quantity <= 0:
                 raise ValueError("没有可卖持仓")
-            return self.submit(symbol, side, quantity, timestamp, reference_price)
+            return self.submit(symbol, side, quantity, timestamp, reference_price, allow_fractional=True)
         if side != "buy":
             raise ValueError("side 必须是 buy 或 sell")
         reference = decimal(reference_price) if reference_price is not None else None
@@ -96,6 +98,13 @@ class MatchingEngine:
             return False
         self._finish(order, "cancelled", "策略撤单", timestamp)
         return True
+
+    def apply_corporate_action(self, symbol, ratio, timestamp):
+        # Pre-action prices and quantities are not valid orders after ex-date.
+        for order in self.orders.values():
+            if order.status == "accepted" and order.symbol == symbol:
+                self._finish(order, "cancelled", "公司行动生效，原委托已取消", timestamp)
+        return self.account.reinvest_distribution(symbol, ratio)
 
     def _finish(self, order, status, reason, timestamp):
         self.account.release(order)

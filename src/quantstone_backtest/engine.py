@@ -111,6 +111,8 @@ class Engine:
         self.loaded_symbols = {b.symbol for b in bars}
         self.events = defaultdict(lambda: defaultdict(lambda: {"open": {}, "close": []}))
         self.clock_closes = set()
+        self.adjustments = defaultdict(dict)
+        self.corporate_actions = []
         self.initial_bars = list(self.bars)
         self.bars = []
         self.legacy_handle_bar = False
@@ -125,6 +127,11 @@ class Engine:
     def ingest(self, bars):
         """Cache past bars and schedule future events without exposing future OHLC."""
         for bar in sorted(bars, key=lambda b: (b.end, b.frequency, b.symbol)):
+            if bar.frequency == "1d" and bar.adjustment_ratio != 1:
+                existing = self.adjustments[bar.start.date()].get(bar.symbol)
+                if existing is not None and existing != bar.adjustment_ratio:
+                    raise ValueError("同一股票交易日存在冲突的复权比例")
+                self.adjustments[bar.start.date()][bar.symbol] = bar.adjustment_ratio
             if bar.end <= self.now:
                 self.history[(bar.frequency, bar.symbol)].append(bar)
                 self.last_prices[bar.symbol] = bar.close
@@ -185,6 +192,11 @@ class Engine:
         self.reports()
         for index, session in enumerate(self.sessions):
             self.now = datetime.combine(session, time(9), SHANGHAI)
+            for symbol, ratio in sorted(self.adjustments[session].items()):
+                action = self.exchange.apply_corporate_action(symbol, ratio, self.now)
+                action["date"] = session.isoformat()
+                self.corporate_actions.append(action)
+            self.reports()
             self.account.new_session()
             self.callback("before_trading")
             self.reports()
@@ -230,6 +242,7 @@ class Engine:
             "logs": self.logs,
             "effective_fees": self.account.fees,
             "loaded_symbols": sorted(self.loaded_symbols),
+            "corporate_actions": self.corporate_actions,
             "metrics": {"total_return": snapshot["equity"] / self.account.initial_cash - 1,
                         "max_drawdown": drawdown, "trade_count": len(self.exchange.fills)},
         })

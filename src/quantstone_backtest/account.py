@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from .models import FeeModel, Fill, Order, Position, ZERO, money
+from .models import FeeModel, Fill, Order, Position, ZERO, decimal, display_shares, money, shares
 
 
 class Account:
@@ -16,7 +16,7 @@ class Account:
         self.fees = fees or FeeModel()
         self.positions: dict[str, Position] = {}
         self.reservations: dict[str, Decimal] = {}
-        self.sell_reservations: dict[str, tuple[str, int]] = {}
+        self.sell_reservations: dict[str, tuple[str, int | Decimal]] = {}
         self.applied_fills: set[str] = set()
         self.total_fees = ZERO
         self.realized_pnl = ZERO
@@ -32,6 +32,24 @@ class Account:
     def new_session(self):
         for p in self.positions.values():
             p.settled = p.quantity
+
+    def reinvest_distribution(self, symbol: str, ratio) -> dict:
+        """Model an adjustment-factor change as fractional-share reinvestment."""
+        ratio = decimal(ratio)
+        if ratio <= ZERO:
+            raise ValueError("复权比例必须大于零")
+        p = self.positions.get(symbol)
+        before = p.quantity if p else ZERO
+        if p and p.quantity:
+            p.quantity = shares(p.quantity * ratio)
+            p.settled = shares(p.settled * ratio)
+            p.frozen = shares(p.frozen * ratio)
+        return {
+            "symbol": symbol,
+            "ratio": ratio,
+            "quantity_before": display_shares(before),
+            "quantity_after": display_shares(p.quantity if p else ZERO),
+        }
 
     def reserve(self, order: Order):
         if order.side == "buy":

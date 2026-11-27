@@ -35,7 +35,7 @@ class DemandData:
         self.bundle.metadata["skipped_0930_rows"] = skipped
         if c.source == "sdk":
             self.bundle.metadata["note"] = (
-                f"未复权行情；公司行动区间暂不支持。分钟标签={c.minute_label}，"
+                f"未复权行情；复权因子变化按分红再投资调整持股数量（允许小数股）。分钟标签={c.minute_label}，"
                 f"跳过09:30记录 {skipped} 条；无逐笔流动性模拟。"
             )
         return bundle.bars
