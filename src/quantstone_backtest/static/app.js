@@ -14,7 +14,7 @@ async function api(path, options={}){
   return result;
 }
 const fmt=(v,places=2)=>Number(v).toLocaleString('zh-CN',{minimumFractionDigits:places,maximumFractionDigits:places});
-const shortDate=value=>value?new Date(value).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+const shortDate=value=>value?new Date(value).toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
 function node(tag,className,text){const element=document.createElement(tag);if(className)element.className=className;if(text!==undefined)element.textContent=text;return element;}
 
 function strategyStatus(lastRun){
@@ -34,7 +34,7 @@ function renderStrategyList(){
     const tr=document.createElement('tr');tr.className='strategy-row';tr.tabIndex=0;tr.setAttribute('aria-label',`进入策略：${item.name}`);tr.onclick=()=>location.assign(`/strategies/${item.id}`);tr.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();tr.click();}};
     const first=document.createElement('td'),wrap=node('div','strategy-name'),content=document.createElement('div'),open=document.createElement('a');
     open.textContent=item.name;open.href=`/strategies/${item.id}`;open.onclick=event=>event.stopPropagation();content.append(open,node('p','',item.description||'暂无策略说明'));wrap.append(content);first.append(wrap);
-    const meta=document.createElement('td'),metaWrap=node('div','metadata');metaWrap.append(node('span','chip','股票'),node('span','chip blue',item.market),node('span','chip',item.frequency));meta.append(metaWrap);
+    const meta=document.createElement('td'),metaWrap=node('div','metadata');metaWrap.append(node('span','chip',item.instrument_type==='stock'?'股票':item.instrument_type),node('span','chip',item.market),node('span','chip',item.frequency));meta.append(metaWrap);
     const tags=document.createElement('td'),tagWrap=node('div','tag-list');(item.tags.length?item.tags:['未标记']).forEach(tag=>tagWrap.append(node('span','chip',tag)));tags.append(tagWrap);
     const recent=document.createElement('td'),state=strategyStatus(item.last_run),stateNode=node('span',`run-state ${state.className}`,state.label);recent.append(stateNode);
     const count=node('td','',String(item.run_count));
