@@ -74,12 +74,12 @@ async function openStrategy(identifier){
     job=null;selected=null;resetResult();setWorktab('code');
   }catch(e){error(e.message);}
 }
-function markDirty(){dirty=true;$('save-state').textContent='有未保存修改';}
+function markDirty(){dirty=true;$('save-state').textContent='未保存';$('save-state').classList.add('unsaved');}
 async function saveStrategy(){
   if(!currentStrategy)return;
   const payload={name:currentStrategy.name,description:currentStrategy.description,market:currentStrategy.market,instrument_type:currentStrategy.instrument_type,frequency:currentStrategy.frequency,tags:currentStrategy.tags,code:$('strategy').value,status:currentStrategy.status};
   currentStrategy=await api(`/api/strategies/${currentStrategy.id}`,{method:'PUT',body:JSON.stringify(payload)});
-  dirty=false;$('save-state').textContent='已保存';
+  dirty=false;$('save-state').textContent='已保存';$('save-state').classList.remove('unsaved');
 }
 function resetResult(){
   $('status').textContent='尚未开始';$('result-name').textContent='等待运行';$('progress').value=0;$('progress-text').textContent='';
@@ -146,7 +146,10 @@ $('cancel-button').onclick=async()=>{try{await api(`/api/runs/${selected}/cancel
 $('export-button').onclick=()=>{if(!job?.result)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(job,null,2)],{type:'application/json'}));a.download=`quantstone-${job.id}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
 $('refresh-button').onclick=()=>history().catch(e=>error(e.message));
 $('strategy').oninput=markDirty;$('strategy').onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();e.target.setRangeText('    ',e.target.selectionStart,e.target.selectionEnd,'end');markDirty();}};
-$('back-button').onclick=()=>location.assign('/');
+$('back-button').onclick=event=>{event.preventDefault();if(dirty)$('leave-dialog').showModal();else location.assign('/');};
+$('leave-cancel').onclick=()=>$('leave-dialog').close();
+$('leave-confirm').onclick=()=>{dirty=false;location.assign('/');};
+$('leave-dialog').onclick=event=>{if(event.target===$('leave-dialog'))$('leave-dialog').close();};
 $('brand-home').onclick=event=>{event.preventDefault();$('back-button').click();};
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
 }

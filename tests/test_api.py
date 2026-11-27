@@ -182,6 +182,7 @@ def test_separate_strategy_page_and_legacy_instrument(tmp_path):
         assert 'strategy.py' not in page.text
         assert 'Python · UTF-8' not in page.text
         assert 'id="config-dialog"' in page.text
+        assert 'id="leave-dialog"' in page.text
         assert c.get('/strategies/not-found').status_code == 404
         for field, value in [('instrument_type', 'future'), ('market', '美股')]:
             assert c.post('/api/strategies', json={'name': 'x', 'code': EXAMPLE, field: value}, headers=HEADERS).status_code == 422

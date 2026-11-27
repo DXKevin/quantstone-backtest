@@ -36,6 +36,9 @@
         <div class="run-actions"><button type="submit" id="run-button" class="primary">运行回测</button></div></form>
       </section>
   </dialog>
+  <dialog id="leave-dialog" class="confirm-dialog" aria-labelledby="leave-title">
+    <div class="confirm-content"><h2 id="leave-title">放弃未保存的修改？</h2><p>当前策略代码尚未保存，返回策略列表后本次修改将丢失。</p><div class="dialog-actions"><button id="leave-cancel" class="secondary" type="button">继续编辑</button><button id="leave-confirm" class="danger-button" type="button">放弃修改</button></div></div>
+  </dialog>
   <section id="results-pane" class="work-pane" hidden>
     <section class="panel results-panel"><div class="panel-heading"><div><span class="section-label">回测结果</span><small id="result-name">等待运行</small></div><span id="status" class="status">尚未开始</span></div><div class="progress-track"><progress id="progress" max="1" value="0"></progress></div>
       <div class="metrics"><div><span>累计收益</span><strong id="return-value">—</strong></div><div><span>最大回撤</span><strong id="drawdown-value">—</strong></div><div><span>账户总资产</span><strong id="equity-value">—</strong></div><div><span>成交笔数</span><strong id="trades-value">—</strong></div></div>
