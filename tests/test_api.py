@@ -173,6 +173,12 @@ def test_separate_strategy_page_and_legacy_instrument(tmp_path):
         assert page.status_code == 200
         assert 'strategy-view' not in page.text
         assert 'id="source"' not in page.text
+        assert '策略工作台' not in page.text
+        assert '合成示例环境' not in page.text
+        assert '载入示例' not in page.text
+        assert '接口说明' not in page.text
+        assert '生命周期与交易接口' not in page.text
+        assert 'id="config-dialog"' in page.text
         assert c.get('/strategies/not-found').status_code == 404
         for field, value in [('instrument_type', 'future'), ('market', '美股')]:
             assert c.post('/api/strategies', json={'name': 'x', 'code': EXAMPLE, field: value}, headers=HEADERS).status_code == 422

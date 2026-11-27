@@ -65,6 +65,7 @@ async function openStrategy(identifier){
   try{
     error('');currentStrategy=await api(`/api/strategies/${identifier}`);dirty=false;
     $('strategy-title').textContent=currentStrategy.name;$('strategy-description').textContent=currentStrategy.description||'暂无策略说明';
+    $('breadcrumb-strategy').textContent=currentStrategy.name;
     $('strategy-status-dot').classList.toggle('archived',currentStrategy.status==='archived');
     $('strategy').value=currentStrategy.code;$('name').value=`${currentStrategy.name} · 回测`;$('save-state').textContent='已保存';
     document.title=`${currentStrategy.name} · QuantStone`;
@@ -133,17 +134,18 @@ $('run-form').onsubmit=async event=>{
   try{
     if(dirty)await saveStrategy();
     const config=Object.fromEntries(fields.map(k=>[k,$(k).value]));config.strategy_id=currentStrategy.id;config.instrument_type=currentStrategy.instrument_type;config.market=currentStrategy.market;config.strategy=$('strategy').value;
-    const created=await api('/api/runs',{method:'POST',body:JSON.stringify(config)});setWorktab('results');await select(created.id);
+    const created=await api('/api/runs',{method:'POST',body:JSON.stringify(config)});$('config-dialog').close();setWorktab('results');await select(created.id);
   }catch(e){error(e.message);}finally{$('run-button').disabled=false;$('run-button-top').disabled=false;}
 };
 $('run-button-top').onclick=()=>{$('run-form').requestSubmit();};
+$('config-button').onclick=()=>{$('config-dialog').showModal();setTimeout(()=>$('name').focus(),0);};
+$('config-close').onclick=()=>$('config-dialog').close();
+$('config-dialog').onclick=event=>{if(event.target===$('config-dialog'))$('config-dialog').close();};
 $('save-strategy-button').onclick=()=>saveStrategy().catch(e=>error(e.message));
 $('cancel-button').onclick=async()=>{try{await api(`/api/runs/${selected}/cancel`,{method:'POST'});await select(selected);}catch(e){error(e.message);}};
 $('export-button').onclick=()=>{if(!job?.result)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(job,null,2)],{type:'application/json'}));a.download=`quantstone-${job.id}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
 $('refresh-button').onclick=()=>history().catch(e=>error(e.message));
-$('example-button').onclick=async()=>{if($('strategy').value&&!confirm('载入示例将替换当前代码，是否继续？'))return;$('strategy').value=exampleCode||(await api('/api/example')).strategy;markDirty();};
 $('strategy').oninput=markDirty;$('strategy').onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();e.target.setRangeText('    ',e.target.selectionStart,e.target.selectionEnd,'end');markDirty();}};
-$('help-button').onclick=()=>{$('help').open=!$('help').open;};
 $('back-button').onclick=()=>location.assign('/');
 $('brand-home').onclick=event=>{event.preventDefault();$('back-button').click();};
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
@@ -186,6 +188,6 @@ $('strategy-form').onsubmit=async event=>{
 };
 
 }
-(async()=>{try{exampleCode=(await api('/api/example')).strategy;if(isStrategyPage){await openStrategy(location.pathname.split('/').pop());const env=await api('/api/environment');$('environment-note').textContent=env.data_source==='demo'?'合成示例环境':'QuantStone 数据环境';$('source-note').textContent=env.data_source==='demo'?'当前使用合成示例行情。':'行情由引擎自动准备。';}else await loadStrategies();}catch(e){error(e.message);}})();
+(async()=>{try{if(isStrategyPage)await openStrategy(location.pathname.split('/').pop());else{exampleCode=(await api('/api/example')).strategy;await loadStrategies();}}catch(e){error(e.message);}})();
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));detail();});
 document.querySelectorAll('[data-worktab]').forEach(b=>b.onclick=()=>setWorktab(b.dataset.worktab));

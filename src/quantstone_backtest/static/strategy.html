@@ -2,28 +2,30 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略工作台</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/research.css"><script defer src="/app.js"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/research.css"><script defer src="/app.js"></script>
 </head>
 <body class="strategy-page">
-<header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a><nav>策略工作台</nav><div class="topbar-meta" id="environment-note"></div></header>
+<header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
 <main><div id="notice" role="alert" hidden></div>
 <section id="workbench-view" class="view">
+  <nav class="strategy-breadcrumb" aria-label="页面路径"><a id="back-button" href="/">策略列表</a><span>/</span><span id="breadcrumb-strategy">策略</span></nav>
   <div class="workbench-heading">
-    <button id="back-button" class="back-button">← 返回策略列表</button>
     <div class="workbench-title"><div><span id="strategy-status-dot" class="status-dot"></span><h1 id="strategy-title">策略</h1></div><p id="strategy-description"></p><div id="strategy-instrument" class="instrument-badge"></div></div>
-    <div class="workbench-actions"><span id="save-state">已保存</span><button id="save-strategy-button" class="secondary">保存策略</button><button id="run-button-top" class="primary">运行回测</button></div>
+    <div class="workbench-actions"><span id="save-state">已保存</span><button id="save-strategy-button" class="secondary">保存策略</button><button id="config-button" class="secondary">回测配置</button><button id="run-button-top" class="primary">运行回测</button></div>
   </div>
   <div class="workbench-tabs"><button class="active" data-worktab="code">策略代码</button><button data-worktab="results">回测结果</button><button data-worktab="history">历史记录</button></div>
   <section id="code-pane" class="work-pane">
     <div class="workspace">
-      <aside class="strategy-panel panel">
-        <div class="panel-heading"><div><span class="section-label">Python 策略</span><small>strategy.py</small></div><button id="example-button" class="text-button">载入示例</button></div>
+      <section class="strategy-panel panel">
+        <div class="panel-heading"><div><span class="section-label">Python 策略</span><small>strategy.py</small></div></div>
         <label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" spellcheck="false" autocomplete="off"></textarea>
-        <div class="editor-footer"><span>Python · UTF-8</span><button id="help-button" class="text-button">接口说明</button></div>
-        <details id="help"><summary>生命周期与交易接口</summary><div class="help-content"><p><code>init(ctx)</code> 初始化；<code>before_trading(ctx)</code> 盘前；<code>handle_bar(ctx)</code> 按所选频率调用；<code>after_trading(ctx)</code> 盘后。</p><p><code>ctx.current(symbol)</code> 获取最近已完成的 K 线，无数据返回 None；<code>ctx.history(symbol, 20, '1d')</code> 查询已完成历史。查询和下单会自动准备行情，无需设置股票池或订阅。</p><p><code>ctx.order(symbol, 'buy', 100)</code> 下单，下一根开盘尝试成交；<code>ctx.set_fees(commission_rate=0.0003, minimum_commission=5, sell_tax_rate=0.0005, transfer_rate=0.00001)</code> 仅在 init 首次下单前设置。</p><p><code>ctx.portfolio</code> 读取账户；<code>ctx.state</code> 保存策略状态。旧版 <code>handle_bar(ctx, bars)</code> 仍支持，bars 仅包含已自动加载的行情。</p></div></details>
-      </aside>
-      <section class="panel config-panel">
-        <div class="panel-heading"><div><span class="section-label">回测配置</span><small>后一根 K 线开盘撮合</small></div></div>
+        <div class="editor-footer"><span>Python · UTF-8</span></div>
+      </section>
+    </div>
+  </section>
+  <dialog id="config-dialog" class="config-dialog">
+      <section class="config-panel">
+        <div class="drawer-heading"><div><h2>回测配置</h2><p>后一根 K 线开盘撮合</p></div><button id="config-close" class="icon-button" type="button" aria-label="关闭回测配置">×</button></div>
         <form id="run-form"><div class="form-grid">
           <label class="wide">回测名称<input id="name" maxlength="100" required></label>
           <label>运行频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label>
@@ -33,10 +35,9 @@
           <label>初始资金 / 元<input id="initial_cash" type="number" value="1000000" min="1" required></label>
         </div>
         <p class="hint">交易对象由策略决定；费用可在 init 中通过 ctx.set_fees(...) 设置。</p>
-        <div class="run-actions"><span id="source-note" class="hint"></span><button type="submit" id="run-button" class="primary">运行回测</button></div></form>
+        <div class="run-actions"><button type="submit" id="run-button" class="primary">运行回测</button></div></form>
       </section>
-    </div>
-  </section>
+  </dialog>
   <section id="results-pane" class="work-pane" hidden>
     <section class="panel results-panel"><div class="panel-heading"><div><span class="section-label">回测结果</span><small id="result-name">等待运行</small></div><span id="status" class="status">尚未开始</span></div><div class="progress-track"><progress id="progress" max="1" value="0"></progress></div>
       <div class="metrics"><div><span>累计收益</span><strong id="return-value">—</strong></div><div><span>最大回撤</span><strong id="drawdown-value">—</strong></div><div><span>账户总资产</span><strong id="equity-value">—</strong></div><div><span>成交笔数</span><strong id="trades-value">—</strong></div></div>

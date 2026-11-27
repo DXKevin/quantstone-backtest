@@ -72,6 +72,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offse
 
 .strategy-row{cursor:pointer}.strategy-row:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
 .strategy-name a{font-weight:600;color:var(--ink);text-decoration:none}.strategy-name a:hover{color:var(--blue)}
-.strategy-page main{padding:24px 30px;max-width:none}.strategy-page .topbar nav{color:#c9d2df;font-size:14px}
+.strategy-page main{padding:22px 30px 40px;max-width:none}.strategy-page .topbar{height:54px}
+.strategy-breadcrumb{display:flex;gap:8px;align-items:center;margin:0 0 14px;font-size:12px;color:#98a2b1}.strategy-breadcrumb a{color:#66748a}.strategy-breadcrumb a:hover{color:var(--blue)}
+.strategy-page .workbench-heading{grid-template-columns:minmax(0,1fr) auto;margin-bottom:12px}
+.strategy-page .workspace{display:block}.strategy-page .strategy-panel textarea{height:calc(100vh - 270px);min-height:540px;resize:vertical}.strategy-page .editor-footer{justify-content:flex-start}
+.config-dialog{position:fixed;inset:0 0 0 auto;width:min(410px,100%);max-width:none;height:100dvh;max-height:none;margin:0;border-radius:0;padding:0}.config-dialog::backdrop{background:#1018274d;backdrop-filter:none}.config-dialog .config-panel{height:100%;background:#fff;overflow:auto}.drawer-heading{padding:22px 22px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start}.drawer-heading h2{font-size:19px;margin:0}.drawer-heading p{font-size:12px;color:#8b97a8;margin:6px 0 0}.config-dialog .config-panel form{padding:20px 22px}.config-dialog .form-grid{grid-template-columns:1fr}.config-dialog .form-grid label.wide{grid-column:auto}.config-dialog .run-actions{justify-content:flex-end}.config-dialog .run-actions .primary{width:100%}
 .instrument-badge{font-size:12px;color:var(--blue);margin-top:7px}
-@media(max-width:700px){.strategy-page main{padding:18px 14px}}
+@media(max-width:700px){.strategy-page main{padding:16px 14px}.strategy-page .workbench-heading{display:flex}.strategy-page .strategy-panel textarea{height:calc(100vh - 350px);min-height:420px}.strategy-breadcrumb{margin-bottom:12px}.config-dialog{width:100%}}
