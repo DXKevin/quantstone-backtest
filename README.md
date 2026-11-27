@@ -64,13 +64,12 @@ hostname -I
 
 ```bash
 .venv/bin/python -m pytest -q
-node --check src/quantstone_backtest/static/app.js
 npm ci
 npm run typecheck
-npm run build:editor
+npm run build:web
 ```
 
-运行服务不需要 Node.js，仓库已提交构建后的 `static/editor.js`。只有修改 `web/editor.ts` 时才需要安装 npm 依赖、执行类型检查并重新构建。
+运行服务不需要 Node.js，仓库已提交构建后的 `static/app.js` 和 `static/editor.js`。修改 `web/app.ts` 或 `web/editor.ts` 后需要执行类型检查并重新构建。
 
 可选浏览器验证（先启动本地服务）：
 

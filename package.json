@@ -2,7 +2,9 @@
   "name": "quantstone-backtest-web",
   "private": true,
   "scripts": {
+    "build:app": "esbuild web/app.ts --bundle --format=iife --minify --legal-comments=inline --outfile=src/quantstone_backtest/static/app.js",
     "build:editor": "esbuild web/editor.ts --bundle --format=esm --minify --legal-comments=inline --outfile=src/quantstone_backtest/static/editor.js",
+    "build:web": "npm run build:app && npm run build:editor",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
