@@ -3,7 +3,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from quantstone_backtest.api import create_app
+from quantstone_backtest.api import create_app, local_allowed_hosts
 from quantstone_backtest.example import EXAMPLE
 from quantstone_backtest.jobs import JobManager
 from quantstone_backtest.config import RunConfig
@@ -64,6 +64,25 @@ def test_validation_and_cross_site_requests(tmp_path):
         assert c.post('/api/runs', json={'strategy': EXAMPLE,'symbols':['688001.SH']}, headers=HEADERS).status_code == 422
         assert c.get('/api/runs/invalid').status_code == 404
         assert c.get('/api/health', headers={'Host':'evil.example'}).status_code == 400
+
+
+def test_lan_host_can_be_allowed_explicitly(tmp_path):
+    with TestClient(create_app(tmp_path, allowed_hosts=['192.168.10.20'])) as c:
+        response = c.get('/api/health', headers={'Host': '192.168.10.20:8010'})
+        assert response.status_code == 200
+
+
+def test_private_lan_address_is_allowed_without_dns(tmp_path):
+    with TestClient(create_app(tmp_path)) as c:
+        assert c.get('/api/health', headers={'Host': '10.20.30.40:8010'}).status_code == 200
+        assert c.get('/api/health', headers={'Host': '172.16.2.3:8010'}).status_code == 200
+        assert c.get('/api/health', headers={'Host': '192.168.1.2:8010'}).status_code == 200
+        assert c.get('/api/health', headers={'Host': '8.8.8.8:8010'}).status_code == 400
+
+
+def test_local_hosts_include_loopback_and_extra_value():
+    hosts = local_allowed_hosts(['backtest.lan'])
+    assert {'localhost', 'backtest.lan'} <= set(hosts)
 
 
 def test_worker_timeout(tmp_path):

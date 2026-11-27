@@ -1,19 +1,37 @@
 from contextlib import asynccontextmanager
+from ipaddress import ip_address
 import os
 from pathlib import Path
+import socket
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .config import RunConfig
 from .example import EXAMPLE
 from .jobs import JobManager
 
 
-def create_app(root=None):
+def local_allowed_hosts(extra_hosts=None):
+    """Return exact host names accepted in addition to private LAN addresses."""
+    hosts = {"localhost", "testserver", socket.gethostname()}
+    hosts.update(host.strip() for host in (extra_hosts or []) if host.strip())
+    return sorted(hosts)
+
+
+def host_name(value):
+    value = value.strip()
+    if value.startswith("["):
+        closing = value.find("]")
+        return value[1:closing] if closing > 0 else value
+    name, separator, port = value.rpartition(":")
+    return name if separator and port.isdigit() else value
+
+
+def create_app(root=None, allowed_hosts=None):
     root = Path(root or os.environ.get("QUANTSTONE_BACKTEST_HOME", "var/runs"))
+    accepted_hosts = {host.lower() for host in local_allowed_hosts(allowed_hosts)}
 
     @asynccontextmanager
     async def lifespan(app):
@@ -22,10 +40,22 @@ def create_app(root=None):
         app.state.jobs.close()
 
     app = FastAPI(title="QuantStone Backtest", lifespan=lifespan)
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"])
 
     @app.middleware("http")
     async def local_write_guard(request: Request, call_next):
+        host = host_name(request.headers.get("host", "")).lower()
+        accepted = host in accepted_hosts
+        if not accepted:
+            try:
+                address = ip_address(host)
+                accepted = address.is_private or address.is_loopback or address.is_link_local
+            except ValueError:
+                accepted = False
+        if not accepted:
+            return JSONResponse(
+                {"detail": "不允许的 Host；局域网域名请用 --allowed-host 添加"},
+                status_code=400,
+            )
         if request.method in {"POST", "PUT", "DELETE", "PATCH"}:
             if request.headers.get("x-quantstone-client") != "workbench":
                 return JSONResponse({"detail": "写操作需要本地工作台请求头"}, status_code=403)
