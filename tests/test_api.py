@@ -235,3 +235,14 @@ def test_data_source_is_owned_by_server_and_instrument_is_persisted(tmp_path):
         assert c.get('/api/environment').json()['data_source'] == 'sdk'
     with pytest.raises(ValueError, match='QUANTSTONE_DATA_SOURCE'):
         create_app(tmp_path, data_source='unknown')
+
+
+def test_demo_source_rejects_misleading_long_horizon(tmp_path):
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
+        response = c.post(
+            '/api/runs',
+            json={'strategy': EXAMPLE, 'start': '2022-01-01', 'end': '2026-11-13'},
+            headers=HEADERS,
+        )
+        assert response.status_code == 422
+        assert '最多 90 天' in response.json()['detail']

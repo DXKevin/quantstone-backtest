@@ -43,6 +43,7 @@
     <section class="panel results-panel">
       <header class="result-hero"><div class="result-title"><div><span id="status" class="status">尚未开始</span><h2 id="result-name">等待运行</h2></div><p><span id="result-period">尚未选择回测区间</span><span id="result-environment">—</span></p></div><div class="result-actions"><button id="cancel-button" class="secondary" hidden>取消任务</button><button id="export-button" class="secondary" disabled>导出结果</button></div></header>
       <div class="progress-track"><progress id="progress" max="1" value="0"></progress><span id="progress-text" class="hint"></span></div>
+      <div id="demo-warning" class="demo-warning" role="note" hidden><strong>当前结果使用合成测试行情</strong><span>仅用于验证回测流程，不能用于评价策略收益或风险。</span></div>
       <div class="metrics"><article><span>累计收益</span><strong id="return-value">—</strong><small>期末净值相对初始资金</small></article><article><span>最大回撤</span><strong id="drawdown-value">—</strong><small>历史峰值至后续低点</small></article><article><span>账户总资产</span><strong id="equity-value">—</strong><small>现金与持仓市值合计</small></article><article><span>成交笔数</span><strong id="trades-value">—</strong><small>实际完成的成交记录</small></article></div>
       <div class="result-analysis-grid">
         <section class="chart-card"><div class="result-section-heading"><div><h3>账户净值</h3><p id="chart-summary">每日收盘后的账户净值</p></div><span id="latest-net-value">—</span></div><div id="chart" class="chart"><div class="empty"><strong>从一次回测开始</strong><p>运行策略后，在这里查看账户净值。</p></div></div></section>

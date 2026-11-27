@@ -173,6 +173,7 @@ async function saveStrategy() {
 function resetResult() {
   $("status").textContent = "尚未开始"; $("result-name").textContent = "等待运行"; $<HTMLProgressElement>("progress").value = 0; $("progress-text").textContent = "";
   $("status").className = "status"; $("result-period").textContent = "尚未选择回测区间"; $("result-environment").textContent = "—"; $("chart-summary").textContent = "每日收盘后的账户净值";
+  $("demo-warning").hidden = true;
   ["return-value", "drawdown-value", "equity-value", "trades-value", "latest-net-value", "initial-cash-value", "cash-value", "market-value", "realized-pnl-value", "unrealized-pnl-value", "fees-value"].forEach(id => { $(id).textContent = "—"; $(id).classList.remove("positive", "negative"); }); $("result-note").textContent = "";
   $<HTMLButtonElement>("cancel-button").hidden = true; $<HTMLButtonElement>("export-button").disabled = true; emptyChart("运行策略后，在这里查看账户净值。");
   $("detail-content").replaceChildren(node("p", "hint", "运行回测后查看明细。"));
@@ -216,7 +217,7 @@ function detail() {
 }
 function render() {
   if (!job) return; $("status").textContent = states[job.status] || job.status; $("status").className = `status ${job.status}`; $("result-name").textContent = job.name;
-  $("result-period").textContent = `${job.start} — ${job.end}`; $("result-environment").textContent = `${job.frequency === "1m" ? "1 分钟" : "日线"} · ${job.source === "demo" ? "合成示例行情" : "真实行情"}`;
+  $("result-period").textContent = `${job.start} — ${job.end}`; $("result-environment").textContent = `${job.frequency === "1m" ? "1 分钟" : "日线"} · ${job.source === "demo" ? "合成测试行情（非真实）" : "真实行情"}`; $("demo-warning").hidden = job.source !== "demo";
   const progress = job.progress || {}; $<HTMLProgressElement>("progress").value = job.status === "completed" ? 1 : Math.min(1, (progress.completed || 0) / (progress.total || 1));
   $("progress-text").textContent = progress.total ? `${progress.stage === "loading" ? "加载数据" : "回放交易日"} ${progress.completed}/${progress.total} ${progress.date || ""}` : "";
   $<HTMLButtonElement>("cancel-button").hidden = job.status !== "running"; $<HTMLButtonElement>("export-button").disabled = !job.result;
@@ -237,7 +238,7 @@ async function selectRun(id: string) {
 }
 async function loadHistory() {
   if (!currentStrategy) return; const rows = (await api<RunSummary[]>("/api/runs")).filter(item => item.strategy_id === currentStrategy!.id);
-  table<RunSummary>($("history"), [["名称", row => row.name], ["品种 / 市场", row => `股票 / ${row.market || "A股"}`], ["数据", row => row.source === "demo" ? "合成示例" : "真实数据"], ["频率", row => row.frequency], ["区间", row => `${row.start} — ${row.end}`], ["状态", row => states[row.status] || row.status], ["创建时间", row => new Date(row.created_at).toLocaleString("zh-CN")], ["操作", row => { const button = node("button", "secondary", "查看"); button.onclick = () => { setWorktab("results"); selectRun(row.id).catch(reason => showError(errorMessage(reason))); }; return button; }]], rows);
+  table<RunSummary>($("history"), [["名称", row => row.name], ["品种 / 市场", row => `股票 / ${row.market || "A股"}`], ["数据", row => row.source === "demo" ? "合成测试（非真实）" : "真实数据"], ["频率", row => row.frequency], ["区间", row => `${row.start} — ${row.end}`], ["状态", row => states[row.status] || row.status], ["创建时间", row => new Date(row.created_at).toLocaleString("zh-CN")], ["操作", row => { const button = node("button", "secondary", "查看"); button.onclick = () => { setWorktab("results"); selectRun(row.id).catch(reason => showError(errorMessage(reason))); }; return button; }]], rows);
 }
 
 if (isStrategyPage) {

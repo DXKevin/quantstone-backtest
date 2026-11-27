@@ -67,6 +67,16 @@ def test_demo_deterministic_and_has_240_minutes_per_day():
     assert len([bar for bar in a.bars if bar.frequency == '1m']) == 720
 
 
+def test_demo_prices_are_window_independent_and_have_no_long_term_drift():
+    short = demo_data(date(2026, 11, 2), date(2026, 11, 3), ['000001.SZ'], '1d')
+    long = demo_data(date(2022, 1, 1), date(2026, 11, 3), ['000001.SZ'], '1d')
+    short_close = next(bar.close for bar in short.bars if bar.start.date() == date(2026, 11, 2))
+    long_close = next(bar.close for bar in long.bars if bar.start.date() == date(2026, 11, 2))
+    prices = [bar.close for bar in long.bars]
+    assert short_close == long_close
+    assert max(prices) - min(prices) < Decimal('2')
+
+
 def test_minute_end_label_maps_to_prior_open():
     b = row_bar({**row(), "bar_time": 150000}, "1m", minute_label="end")
     assert b.start.strftime("%H:%M") == "14:59"

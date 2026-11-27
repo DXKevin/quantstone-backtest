@@ -66,11 +66,16 @@ def demo_data(start, end, symbols, frequency):
     while prior.weekday() >= 5:
         prior -= timedelta(days=1)
     bars = []
-    for di, day in enumerate([prior] + sessions):
+    for day in [prior] + sessions:
+        # Anchor the phase to the calendar date so the same date always has the
+        # same synthetic price, regardless of the requested backtest window.
+        phase = (day - date(2000, 1, 3)).days
         for si, symbol in enumerate(symbols):
-            base = 10 + si * 5 + di * .025 + math.sin(di / 3) * .25
+            # Demo data only exercises the pipeline. Keep it bounded around a
+            # stable level instead of embedding a long-term return assumption.
+            base = 10 + si * 5 + math.sin(phase / 17) * .45 + math.sin(phase / 5) * .12
             op = money(base)
-            cl = money(base + math.sin(di * .8) * .12 + .02)
+            cl = money(base + math.sin(phase * .8) * .12)
             bars.append(Bar(symbol, datetime.combine(day, time(9, 30), SHANGHAI),
                             datetime.combine(day, time(15), SHANGHAI), op, max(op, cl) + Decimal('.1'),
                             min(op, cl) - Decimal('.1'), cl, 1_000_000, "1d"))
@@ -82,7 +87,7 @@ def demo_data(start, end, symbols, frequency):
                     mc = money(op + (cl - op) * Decimal(mi + 1) / 240)
                     bars.append(Bar(symbol, stamp, stamp + timedelta(minutes=1), mo,
                                     max(mo, mc) + Decimal('.01'), min(mo, mc) - Decimal('.01'), mc, 10000, "1m"))
-    return DataBundle(bars, sessions, {"source": "demo", "note": "确定性合成行情；工作日历不包含法定节假日，不代表真实投资表现"})
+    return DataBundle(bars, sessions, {"source": "demo", "note": "合成测试行情，仅用于验证回测流程；不包含真实交易日历或市场价格，不能用于评价策略表现。"})
 
 
 def sdk_data(client, start, end, symbols, frequency, progress=None, minute_label="end"):

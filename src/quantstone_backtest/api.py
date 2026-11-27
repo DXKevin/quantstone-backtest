@@ -145,6 +145,11 @@ def create_app(root=None, allowed_hosts=None, strategy_root=None, data_source=No
 
     @app.post("/api/runs", status_code=201)
     def create_run(config: RunConfig, request: Request):
+        if data_source == "demo" and (config.end - config.start).days > 90:
+            raise HTTPException(
+                422,
+                "合成测试行情仅用于验证流程，回测区间最多 90 天；长期策略研究请使用真实行情数据源。",
+            )
         if config.strategy_id:
             try:
                 strategy = request.app.state.strategies.get(config.strategy_id)
