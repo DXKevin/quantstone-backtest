@@ -77,6 +77,13 @@ function folderIcon() {
   path.setAttribute("d", "M3.5 6.5c0-.83.67-1.5 1.5-1.5h4.2l2 2H19c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5c-.83 0-1.5-.67-1.5-1.5z");
   svg.append(path); return svg;
 }
+function pencilIcon() {
+  const namespace = "http://www.w3.org/2000/svg", svg = document.createElementNS(namespace, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(namespace, "path");
+  path.setAttribute("d", "M15.7 5.3a2.4 2.4 0 0 1 3.4 3.4L9 18.8 4.5 19.5l.7-4.5zM14.3 6.7l3 3");
+  svg.append(path); return svg;
+}
 function strategyStatus(lastRun?: RunSummary) {
   if (!lastRun) return {label: "尚未回测", className: ""};
   return {label: states[lastRun.status] || lastRun.status, className: lastRun.status};
@@ -98,10 +105,10 @@ function renderStrategyList() {
     const folderCell = node("td"); folderCell.colSpan = 6; const folderLine = node("div", "folder-line");
     const folderButton = node("button", "folder-toggle"); folderButton.type = "button";
     const collapsed = collapsedFolders.has(folder); folderButton.setAttribute("aria-expanded", String(!collapsed));
-    folderButton.append(node("span", "folder-caret", collapsed ? "›" : "⌄"), folderIcon(), node("span", "folder-name", folder), node("span", "folder-count", String(items.length)));
+    folderButton.append(node("span", "folder-caret", collapsed ? "›" : "⌄"), folderIcon(), node("span", "folder-name", folder));
     const toggle = () => { collapsedFolders.has(folder) ? collapsedFolders.delete(folder) : collapsedFolders.add(folder); try { localStorage.setItem("quantstone.strategyFolders.collapsed", JSON.stringify([...collapsedFolders])); } catch {} renderStrategyList(); };
     folderButton.onclick = toggle; folderRow.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); } };
-    const renameButton = node("button", "folder-rename", "重命名"); renameButton.type = "button";
+    const renameButton = node("button", "folder-rename"); renameButton.type = "button"; renameButton.title = "重命名目录"; renameButton.setAttribute("aria-label", `重命名 ${folder}`); renameButton.append(pencilIcon());
     renameButton.onclick = event => {
       event.stopPropagation();
       const form = node("form", "folder-rename-form"), input = node("input", "folder-rename-input"), save = node("button", "folder-rename-save", "保存"), cancel = node("button", "folder-rename-cancel", "取消");
@@ -121,7 +128,7 @@ function renderStrategyList() {
       };
       form.append(folderIcon(), input, save, cancel); folderCell.replaceChildren(form); input.focus(); input.select();
     };
-    folderLine.append(folderButton, renameButton); folderCell.append(folderLine); folderRow.append(folderCell); body.append(folderRow); if (collapsed) continue;
+    folderLine.append(folderButton, renameButton, node("span", "folder-count", String(items.length))); folderCell.append(folderLine); folderRow.append(folderCell); body.append(folderRow); if (collapsed) continue;
     for (const item of items) {
       const row = node("tr", "strategy-row"); row.tabIndex = 0; row.setAttribute("aria-label", `进入策略：${item.name}`);
       row.onclick = () => location.assign(`/strategies/${item.id}`); row.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); row.click(); } };
