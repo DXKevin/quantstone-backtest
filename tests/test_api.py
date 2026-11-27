@@ -22,7 +22,7 @@ def wait_job(client, identifier):
 
 
 def test_api_runs_real_worker_and_persists_snapshot(tmp_path):
-    with TestClient(create_app(tmp_path)) as c:
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
         health = c.get('/api/health')
         assert health.json()['status'] == 'ok'
         assert "style-src 'self' 'unsafe-inline'" in health.headers['content-security-policy']
@@ -38,12 +38,12 @@ def test_api_runs_real_worker_and_persists_snapshot(tmp_path):
         assert result['result']['metrics']['trade_count'] == 1
         assert (tmp_path / identifier / 'strategy.py').read_text() == EXAMPLE
         assert c.get('/api/runs').json()[0]['id'] == identifier
-    with TestClient(create_app(tmp_path)) as c:
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
         assert c.get(f'/api/runs/{identifier}').json()['status'] == 'completed'
 
 
 def test_cancel_infinite_strategy(tmp_path):
-    with TestClient(create_app(tmp_path)) as c:
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
         strategy = 'def handle_bar(c, bars):\n    while True: pass\n'
         identifier = c.post('/api/runs', json={'strategy': strategy}, headers=HEADERS).json()['id']
         response = c.post(f'/api/runs/{identifier}/cancel', headers=HEADERS)
@@ -52,7 +52,7 @@ def test_cancel_infinite_strategy(tmp_path):
 
 
 def test_strategy_exception_is_reported(tmp_path):
-    with TestClient(create_app(tmp_path)) as c:
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
         strategy = 'def handle_bar(c, bars):\n    raise ValueError("strategy exploded")\n'
         identifier = c.post('/api/runs', json={'strategy': strategy}, headers=HEADERS).json()['id']
         job = wait_job(c, identifier)
@@ -61,7 +61,7 @@ def test_strategy_exception_is_reported(tmp_path):
 
 
 def test_validation_and_cross_site_requests(tmp_path):
-    with TestClient(create_app(tmp_path)) as c:
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
         assert c.post('/api/runs', json={'strategy': EXAMPLE}).status_code == 403
         assert c.post('/api/runs', json={'strategy': EXAMPLE}, headers={**HEADERS,'Origin':'https://example.com'}).status_code == 403
         assert c.post('/api/runs', json={'strategy': 'def broken('}, headers=HEADERS).status_code == 422
@@ -73,7 +73,7 @@ def test_validation_and_cross_site_requests(tmp_path):
 
 def test_strategy_repository_and_run_summary(tmp_path):
     runs, strategy_root = tmp_path / 'runs', tmp_path / 'strategies'
-    with TestClient(create_app(runs, strategy_root=strategy_root)) as c:
+    with TestClient(create_app(runs, strategy_root=strategy_root, data_source='demo')) as c:
         seeded = c.get('/api/strategies').json()
         assert len(seeded) == 1
         assert seeded[0]['name'] == '我的第一个策略'
@@ -144,13 +144,13 @@ def test_strategy_repository_and_run_summary(tmp_path):
 
 
 def test_lan_host_can_be_allowed_explicitly(tmp_path):
-    with TestClient(create_app(tmp_path, allowed_hosts=['192.168.10.20'])) as c:
+    with TestClient(create_app(tmp_path, allowed_hosts=['192.168.10.20'], data_source='demo')) as c:
         response = c.get('/api/health', headers={'Host': '192.168.10.20:8010'})
         assert response.status_code == 200
 
 
 def test_private_lan_address_is_allowed_without_dns(tmp_path):
-    with TestClient(create_app(tmp_path)) as c:
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
         assert c.get('/api/health', headers={'Host': '10.20.30.40:8010'}).status_code == 200
         assert c.get('/api/health', headers={'Host': '172.16.2.3:8010'}).status_code == 200
         assert c.get('/api/health', headers={'Host': '192.168.1.2:8010'}).status_code == 200
@@ -187,7 +187,7 @@ def test_second_server_cannot_own_same_jobs(tmp_path):
 
 def test_separate_strategy_page_and_legacy_instrument(tmp_path):
     import json
-    with TestClient(create_app(tmp_path / 'runs')) as c:
+    with TestClient(create_app(tmp_path / 'runs', data_source='demo')) as c:
         strategy = c.get('/api/strategies').json()[0]
         path = tmp_path / 'strategies' / f"{strategy['id']}.json"
         old = json.loads(path.read_text())
@@ -235,6 +235,12 @@ def test_data_source_is_owned_by_server_and_instrument_is_persisted(tmp_path):
         assert c.get('/api/environment').json()['data_source'] == 'sdk'
     with pytest.raises(ValueError, match='QUANTSTONE_DATA_SOURCE'):
         create_app(tmp_path, data_source='unknown')
+
+
+def test_sdk_is_the_default_data_source(tmp_path, monkeypatch):
+    monkeypatch.delenv('QUANTSTONE_DATA_SOURCE', raising=False)
+    with TestClient(create_app(tmp_path)) as c:
+        assert c.get('/api/environment').json() == {'data_source': 'sdk'}
 
 
 def test_demo_source_rejects_misleading_long_horizon(tmp_path):

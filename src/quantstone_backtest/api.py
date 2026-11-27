@@ -31,7 +31,7 @@ def host_name(value):
 
 
 def create_app(root=None, allowed_hosts=None, strategy_root=None, data_source=None):
-    data_source = data_source or os.environ.get("QUANTSTONE_DATA_SOURCE", "demo")
+    data_source = data_source or os.environ.get("QUANTSTONE_DATA_SOURCE", "sdk")
     if data_source not in {"demo", "sdk"}:
         raise ValueError("QUANTSTONE_DATA_SOURCE 必须为 demo 或 sdk")
     root = Path(root or os.environ.get("QUANTSTONE_BACKTEST_HOME", "var/runs"))
