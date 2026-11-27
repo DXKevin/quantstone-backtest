@@ -146,6 +146,20 @@ $('back-button').onclick=()=>{if(dirty&&!confirm('当前代码尚未保存，仍
 $('brand-home').onclick=event=>{event.preventDefault();$('back-button').click();};
 $('workspace-home').onclick=$('brand-home').onclick;
 $('research-home').onclick=()=>$('back-button').click();
+function setSidebarCollapsed(collapsed){
+  document.body.classList.toggle('sidebar-collapsed',collapsed);
+  $('sidebar-toggle').setAttribute('aria-expanded',String(!collapsed));
+  $('sidebar-toggle').setAttribute('aria-label',collapsed?'展开侧栏':'收起侧栏');
+  $('sidebar-toggle').title=collapsed?'展开侧栏':'收起侧栏';
+}
+let sidebarCollapsed=false;
+try{sidebarCollapsed=localStorage.getItem('quantstone.sidebar.collapsed')==='true';}catch{}
+setSidebarCollapsed(sidebarCollapsed);
+$('sidebar-toggle').onclick=()=>{
+  sidebarCollapsed=!document.body.classList.contains('sidebar-collapsed');
+  setSidebarCollapsed(sidebarCollapsed);
+  try{localStorage.setItem('quantstone.sidebar.collapsed',String(sidebarCollapsed));}catch{}
+};
 document.querySelectorAll('[data-scope]').forEach(button=>button.onclick=()=>{
   if(dirty&&!$('workbench-view').hidden&&!confirm('当前代码尚未保存，仍要返回策略列表吗？'))return;
   scope=button.dataset.scope;
