@@ -8,10 +8,10 @@
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
 <main><div id="notice" role="alert" hidden></div>
 <section id="workbench-view" class="view">
-  <nav class="strategy-breadcrumb" aria-label="页面路径"><a id="back-button" href="/">策略列表</a><span>/</span><span id="breadcrumb-strategy">策略</span></nav>
+  <nav class="strategy-breadcrumb" aria-label="页面路径"><a id="back-button" href="/">策略列表</a></nav>
   <div class="workbench-heading">
-    <div class="workbench-title"><div><span id="strategy-status-dot" class="status-dot"></span><h1 id="strategy-title">策略</h1></div><p id="strategy-description"></p><div id="strategy-instrument" class="instrument-badge"></div></div>
-    <div class="workbench-actions"><span id="save-state">已保存</span><button id="save-strategy-button" class="secondary">保存策略</button><button id="config-button" class="secondary">回测配置</button><button id="run-button-top" class="primary">运行回测</button></div>
+    <div class="workbench-title"><div><h1 id="strategy-title">策略</h1></div><p id="strategy-description"></p><div id="strategy-instrument" class="instrument-badge"></div></div>
+    <div class="workbench-actions"><span id="save-state" hidden></span><button id="save-strategy-button" class="secondary">保存</button><button id="config-button" class="secondary">回测配置</button><button id="run-button-top" class="primary">运行回测</button></div>
   </div>
   <div class="workbench-tabs"><button class="active" data-worktab="code">策略代码</button><button data-worktab="results">回测结果</button><button data-worktab="history">历史记录</button></div>
   <section id="code-pane" class="work-pane">

@@ -65,21 +65,19 @@ async function openStrategy(identifier){
   try{
     error('');currentStrategy=await api(`/api/strategies/${identifier}`);dirty=false;
     $('strategy-title').textContent=currentStrategy.name;$('strategy-description').textContent=currentStrategy.description||'暂无策略说明';
-    $('breadcrumb-strategy').textContent=currentStrategy.name;
-    $('strategy-status-dot').classList.toggle('archived',currentStrategy.status==='archived');
-    $('strategy').value=currentStrategy.code;$('name').value=`${currentStrategy.name} · 回测`;$('save-state').textContent='已保存';
+    $('strategy').value=currentStrategy.code;$('name').value=`${currentStrategy.name} · 回测`;$('save-state').hidden=true;
     document.title=`${currentStrategy.name} · QuantStone`;
     $('strategy-instrument').textContent=`股票 / ${currentStrategy.market}`;
     $('frequency').value=currentStrategy.frequency==='分钟'?'1m':'1d';
     job=null;selected=null;resetResult();setWorktab('code');
   }catch(e){error(e.message);}
 }
-function markDirty(){dirty=true;$('save-state').textContent='未保存';$('save-state').classList.add('unsaved');}
+function markDirty(){dirty=true;$('save-state').textContent='未保存';$('save-state').hidden=false;$('save-state').classList.add('unsaved');}
 async function saveStrategy(){
   if(!currentStrategy)return;
   const payload={name:currentStrategy.name,description:currentStrategy.description,market:currentStrategy.market,instrument_type:currentStrategy.instrument_type,frequency:currentStrategy.frequency,tags:currentStrategy.tags,code:$('strategy').value,status:currentStrategy.status};
   currentStrategy=await api(`/api/strategies/${currentStrategy.id}`,{method:'PUT',body:JSON.stringify(payload)});
-  dirty=false;$('save-state').textContent='已保存';$('save-state').classList.remove('unsaved');
+  dirty=false;$('save-state').hidden=true;$('save-state').classList.remove('unsaved');
 }
 function resetResult(){
   $('status').textContent='尚未开始';$('result-name').textContent='等待运行';$('progress').value=0;$('progress-text').textContent='';
