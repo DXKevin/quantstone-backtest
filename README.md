@@ -2,9 +2,9 @@
 
 策略研究首页支持整行点击进入独立策略页 `/strategies/{id}`，详情页可直接访问、刷新，提供策略代码、回测结果及历史记录。列表、新建策略和任务记录均区分品种与市场；目前只支持股票 / A股。
 
-数据源是服务端配置，不在回测表单中选择。默认使用合成示例行情；连接真实数据时用 `QUANTSTONE_DATA_SOURCE=sdk .venv/bin/quantstone-backtest --runs-dir var/runs` 启动（SDK 服务地址仍由 `QUANTSTONE_API_URL` 设置）。页面显示当前数据环境，所有新任务遵循服务端配置；旧任务快照不变。
+数据源是服务端配置，不在回测表单中选择。默认使用合成示例行情；连接真实数据时用 `QUANTSTONE_DATA_SOURCE=sdk .venv/bin/quantstone-backtest --runs-dir var/runs` 启动（SDK 服务地址仍由 `QUANTSTONE_API_URL` 设置）。所有新任务遵循服务端配置；旧任务快照不变。
 
-纯 Python 的 A 股事件驱动、模拟账户级回测工作台。支持日线和分钟线，在本地网页管理策略、编写代码、配置回测并查看结果。项目仍处于首版开发阶段。
+Python 回测核心与 TypeScript Web 前端组成的 A 股事件驱动、模拟账户级回测工作台。支持日线和分钟线，在本地网页管理策略、编写代码、配置回测并查看结果。项目仍处于首版开发阶段。
 
 ## 快速开始（Linux）
 
@@ -45,7 +45,7 @@ hostname -I
 - 可配置佣金、最低佣金、卖出税费与过户费；Decimal 记账、盈亏和每日净值。
 - 已完成行情窗口，分钟策略可查询已完成日线；策略查询或下单时后台自动加载行情，无需配置股票池或手动订阅。
 - Python SDK 数据读取、字段/单位转换、交易日历、涨跌停价与复权因子检查。
-- Web 策略研究入口、策略搜索与筛选、策略档案、代码编辑、独立进程运行、取消、按策略归属的历史、结果导出、净值图及日志。费用通过策略 init 中的 ctx.set_fees 设置。
+- Web 策略研究入口、策略搜索与筛选、策略档案、TypeScript + CodeMirror 代码编辑器、独立进程运行、取消、按策略归属的历史、结果导出、净值图及日志。编辑器支持行号、Python 高亮、搜索、缩进、折叠、接口补全以及保存/运行快捷键。费用通过策略 init 中的 ctx.set_fees 设置。
 - 单 API 进程最多同时运行两个回测，单次默认超时 600 秒；历史结果持久化。
 
 ## 当前模型边界
@@ -65,7 +65,12 @@ hostname -I
 ```bash
 .venv/bin/python -m pytest -q
 node --check src/quantstone_backtest/static/app.js
+npm ci
+npm run typecheck
+npm run build:editor
 ```
+
+运行服务不需要 Node.js，仓库已提交构建后的 `static/editor.js`。只有修改 `web/editor.ts` 时才需要安装 npm 依赖、执行类型检查并重新构建。
 
 可选浏览器验证（先启动本地服务）：
 

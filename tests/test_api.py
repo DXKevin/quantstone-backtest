@@ -23,8 +23,13 @@ def wait_job(client, identifier):
 
 def test_api_runs_real_worker_and_persists_snapshot(tmp_path):
     with TestClient(create_app(tmp_path)) as c:
-        assert c.get('/api/health').json()['status'] == 'ok'
+        health = c.get('/api/health')
+        assert health.json()['status'] == 'ok'
+        assert "style-src 'self' 'unsafe-inline'" in health.headers['content-security-policy']
         assert '策略研究' in c.get('/').text
+        editor_asset = c.get('/editor.js')
+        assert editor_asset.status_code == 200
+        assert len(editor_asset.content) > 100_000
         response = c.post('/api/runs', json={'strategy': EXAMPLE}, headers=HEADERS)
         assert response.status_code == 201, response.text
         identifier = response.json()['id']
@@ -183,6 +188,8 @@ def test_separate_strategy_page_and_legacy_instrument(tmp_path):
         assert 'Python · UTF-8' not in page.text
         assert 'id="config-dialog"' in page.text
         assert 'id="leave-dialog"' in page.text
+        assert 'id="strategy-editor"' in page.text
+        assert 'src="/editor.js"' in page.text
         assert 'breadcrumb-strategy' not in page.text
         assert 'strategy-status-dot' not in page.text
         assert '>保存策略<' not in page.text

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/research.css"><script defer src="/app.js"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/research.css"><script defer src="/app.js"></script><script type="module" src="/editor.js"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
@@ -17,7 +17,7 @@
   <section id="code-pane" class="work-pane">
     <div class="workspace">
       <section class="strategy-panel panel">
-        <label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" spellcheck="false" autocomplete="off"></textarea>
+        <label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" hidden></textarea><div id="strategy-editor" aria-label="Python 策略代码编辑器"></div>
       </section>
     </div>
   </section>

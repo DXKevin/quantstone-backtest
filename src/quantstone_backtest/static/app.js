@@ -5,6 +5,8 @@ const fields = ['name','frequency','minute_label','start','end','initial_cash'];
 let strategies = [], currentStrategy = null, selected = null, job = null, timer = null, activeTab = 'positions', exampleCode = '', dirty = false;
 let scope = 'all';
 const isStrategyPage = document.body.classList.contains('strategy-page');
+const getStrategyCode=()=>window.quantstoneEditor?.getValue()??$('strategy').value;
+const setStrategyCode=value=>{if(window.quantstoneEditor)window.quantstoneEditor.setValue(value);else $('strategy').value=value;};
 
 function error(message){$('notice').textContent=message;$('notice').hidden=!message;if(message)scrollTo({top:0,behavior:'smooth'});}
 async function api(path, options={}){
@@ -65,7 +67,7 @@ async function openStrategy(identifier){
   try{
     error('');currentStrategy=await api(`/api/strategies/${identifier}`);dirty=false;
     $('strategy-title').textContent=currentStrategy.name;$('strategy-description').textContent=currentStrategy.description||'暂无策略说明';
-    $('strategy').value=currentStrategy.code;$('name').value=`${currentStrategy.name} · 回测`;$('save-state').hidden=true;
+    setStrategyCode(currentStrategy.code);$('name').value=`${currentStrategy.name} · 回测`;$('save-state').hidden=true;
     document.title=`${currentStrategy.name} · QuantStone`;
     $('strategy-instrument').textContent=`股票 / ${currentStrategy.market}`;
     $('frequency').value=currentStrategy.frequency==='分钟'?'1m':'1d';
@@ -75,7 +77,7 @@ async function openStrategy(identifier){
 function markDirty(){dirty=true;$('save-state').textContent='未保存';$('save-state').hidden=false;$('save-state').classList.add('unsaved');}
 async function saveStrategy(){
   if(!currentStrategy)return;
-  const payload={name:currentStrategy.name,description:currentStrategy.description,market:currentStrategy.market,instrument_type:currentStrategy.instrument_type,frequency:currentStrategy.frequency,tags:currentStrategy.tags,code:$('strategy').value,status:currentStrategy.status};
+  const payload={name:currentStrategy.name,description:currentStrategy.description,market:currentStrategy.market,instrument_type:currentStrategy.instrument_type,frequency:currentStrategy.frequency,tags:currentStrategy.tags,code:getStrategyCode(),status:currentStrategy.status};
   currentStrategy=await api(`/api/strategies/${currentStrategy.id}`,{method:'PUT',body:JSON.stringify(payload)});
   dirty=false;$('save-state').hidden=true;$('save-state').classList.remove('unsaved');
 }
@@ -131,7 +133,7 @@ $('run-form').onsubmit=async event=>{
   event.preventDefault();error('');$('run-button').disabled=true;$('run-button-top').disabled=true;
   try{
     if(dirty)await saveStrategy();
-    const config=Object.fromEntries(fields.map(k=>[k,$(k).value]));config.strategy_id=currentStrategy.id;config.instrument_type=currentStrategy.instrument_type;config.market=currentStrategy.market;config.strategy=$('strategy').value;
+    const config=Object.fromEntries(fields.map(k=>[k,$(k).value]));config.strategy_id=currentStrategy.id;config.instrument_type=currentStrategy.instrument_type;config.market=currentStrategy.market;config.strategy=getStrategyCode();
     const created=await api('/api/runs',{method:'POST',body:JSON.stringify(config)});$('config-dialog').close();setWorktab('results');await select(created.id);
   }catch(e){error(e.message);}finally{$('run-button').disabled=false;$('run-button-top').disabled=false;}
 };
@@ -143,7 +145,9 @@ $('save-strategy-button').onclick=()=>saveStrategy().catch(e=>error(e.message));
 $('cancel-button').onclick=async()=>{try{await api(`/api/runs/${selected}/cancel`,{method:'POST'});await select(selected);}catch(e){error(e.message);}};
 $('export-button').onclick=()=>{if(!job?.result)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(job,null,2)],{type:'application/json'}));a.download=`quantstone-${job.id}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
 $('refresh-button').onclick=()=>history().catch(e=>error(e.message));
-$('strategy').oninput=markDirty;$('strategy').onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();e.target.setRangeText('    ',e.target.selectionStart,e.target.selectionEnd,'end');markDirty();}};
+$('strategy').oninput=markDirty;
+document.addEventListener('quantstone-save',()=>saveStrategy().catch(e=>error(e.message)));
+document.addEventListener('quantstone-run',()=>$('run-form').requestSubmit());
 $('back-button').onclick=event=>{event.preventDefault();if(dirty)$('leave-dialog').showModal();else location.assign('/');};
 $('leave-cancel').onclick=()=>$('leave-dialog').close();
 $('leave-confirm').onclick=()=>{dirty=false;location.assign('/');};

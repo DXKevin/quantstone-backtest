@@ -1,0 +1,21 @@
+{
+  "name": "quantstone-backtest-web",
+  "private": true,
+  "scripts": {
+    "build:editor": "esbuild web/editor.ts --bundle --format=esm --minify --legal-comments=inline --outfile=src/quantstone_backtest/static/editor.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "6.20.4",
+    "@codemirror/commands": "6.11.2",
+    "@codemirror/lang-python": "6.2.1",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/theme-one-dark": "6.1.3",
+    "@codemirror/view": "6.44.2",
+    "codemirror": "6.0.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}
