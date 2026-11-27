@@ -56,7 +56,7 @@
         <div class="panel-heading"><div><span class="section-label">Python 策略</span><small>strategy.py</small></div><button id="example-button" class="text-button">载入示例</button></div>
         <label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" spellcheck="false" autocomplete="off"></textarea>
         <div class="editor-footer"><span>Python · UTF-8</span><button id="help-button" class="text-button">接口说明</button></div>
-        <details id="help"><summary>生命周期与交易接口</summary><div class="help-content"><p><strong>普通策略：</strong><code>init(ctx)</code> 初始化；<code>before_trading(ctx)</code> 盘前；<code>handle_bar(ctx, bars)</code> K 线结束；<code>after_trading(ctx)</code> 盘后。</p><p><code>ctx.order(symbol, 'buy', 100)</code> 下单，下一根 K 线开盘尝试成交。普通策略无需处理委托或成交回报。</p><p><code>ctx.history(symbol, 20, '1d')</code> 查询已完成行情；<code>ctx.portfolio</code> 读取账户；<code>ctx.state</code> 保存策略状态。</p></div></details>
+        <details id="help"><summary>生命周期与交易接口</summary><div class="help-content"><p><code>init(ctx)</code> 初始化；<code>before_trading(ctx)</code> 盘前；<code>handle_bar(ctx)</code> 按所选频率调用；<code>after_trading(ctx)</code> 盘后。</p><p><code>ctx.current(symbol)</code> 获取最近已完成的 K 线，无数据返回 None；<code>ctx.history(symbol, 20, '1d')</code> 查询已完成历史。查询和下单会自动准备行情，无需设置股票池或订阅。</p><p><code>ctx.order(symbol, 'buy', 100)</code> 下单，下一根开盘尝试成交；<code>ctx.set_fees(commission_rate=0.0003, minimum_commission=5, sell_tax_rate=0.0005, transfer_rate=0.00001)</code> 仅在 init 首次下单前设置。</p><p><code>ctx.portfolio</code> 读取账户；<code>ctx.state</code> 保存策略状态。旧版 <code>handle_bar(ctx, bars)</code> 仍支持，bars 仅包含已自动加载的行情。</p></div></details>
       </aside>
       <section class="panel config-panel">
         <div class="panel-heading"><div><span class="section-label">回测配置</span><small>后一根 K 线开盘撮合</small></div></div>
@@ -68,9 +68,8 @@
           <label>开始日期<input id="start" type="date" value="2026-11-02" required></label>
           <label>结束日期<input id="end" type="date" value="2026-11-13" required></label>
           <label>初始资金 / 元<input id="initial_cash" type="number" value="1000000" min="1" required></label>
-          <label>股票池<input id="symbols" value="000001.SZ" placeholder="000001.SZ,600000.SH" required></label>
         </div>
-        <details class="fees"><summary>交易费用参数</summary><div class="form-grid"><label>佣金比例<input id="commission_rate" type="number" value="0.0003" min="0" max="1" step="0.00001"></label><label>最低佣金 / 元<input id="minimum_commission" type="number" value="5" min="0" step="0.01"></label><label>卖出税费比例<input id="sell_tax_rate" type="number" value="0.0005" min="0" max="1" step="0.00001"></label><label>过户费比例<input id="transfer_rate" type="number" value="0.00001" min="0" step="0.000001"></label></div></details>
+        <p class="hint">交易对象由策略决定；费用可在 init 中通过 ctx.set_fees(...) 设置。</p>
         <div class="run-actions"><span id="source-note" class="hint">示例是合成数据，用于验证流程。</span><button type="submit" id="run-button">运行回测</button></div></form>
       </section>
     </div>

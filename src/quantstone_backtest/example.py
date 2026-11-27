@@ -1,20 +1,26 @@
-EXAMPLE = '''# 示例：盘后准备股票池，下一交易日根据行情买入。
-# history() 只返回当前时点已经结束的 K 线。
+EXAMPLE = '''# 示例：策略自行决定交易对象，无需配置股票池或订阅行情。
 def init(context):
-    context.state.pool = []
+    context.set_fees(
+        commission_rate=0.0003,
+        minimum_commission=5,
+        sell_tax_rate=0.0005,
+        transfer_rate=0.00001,
+    )
+    context.state.ready = False
     context.state.ordered = False
     context.log("策略初始化")
 
 
 def after_trading(context):
-    context.state.pool = list(context.symbols)
+    context.state.ready = True
 
 
-def handle_bar(context, bars):
-    if not context.state.pool or context.state.ordered:
+def handle_bar(context):
+    if not context.state.ready or context.state.ordered:
         return
-    symbol = context.state.pool[0]
-    if symbol in bars:
+    symbol = "000001.SZ"
+    bar = context.current(symbol)
+    if bar is not None:
         context.order(symbol, "buy", 100)
         context.state.ordered = True
 '''

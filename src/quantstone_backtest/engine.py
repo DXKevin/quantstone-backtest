@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
+from inspect import signature
 from types import MappingProxyType, SimpleNamespace
 
 from .account import Account
@@ -30,13 +31,26 @@ class Context:
     def history(self, symbol, count=20, frequency=None):
         if not isinstance(count, int) or not 1 <= count <= 100_000:
             raise ValueError("历史窗口必须为 1 至 100000")
-        return tuple(self._engine.history[(frequency or self.frequency, symbol)][-count:])
+        frequency = frequency or self.frequency
+        if frequency not in ("1d", self.frequency):
+            raise ValueError("日线回测不能查询分钟行情")
+        symbol = self._engine.ensure_symbol(symbol)
+        return tuple(self._engine.history[(frequency, symbol)][-count:])
+
+    def current(self, symbol, frequency=None):
+        """Latest completed bar, or None; never exposes a forming bar."""
+        rows = self.history(symbol, 1, frequency)
+        return rows[-1] if rows else None
+
+    def set_fees(self, **parameters):
+        if not self._engine.initializing or self._engine.exchange.orders:
+            raise ValueError("费用仅可在 init 中、首次下单前设置")
+        self._engine.account.fees = FeeModel(**parameters)
 
     def order(self, symbol, side, quantity, limit_price=None):
         if self._engine.finishing:
             raise ValueError("回测结束阶段不能下单")
-        if symbol not in self.symbols:
-            raise ValueError("股票不在本次回测股票池中")
+        symbol = self._engine.ensure_symbol(symbol)
         reference = self._engine.last_prices.get(symbol)
         return self._engine.exchange.submit(symbol, side, quantity, self.now, reference, limit_price)
 
@@ -53,7 +67,8 @@ class Context:
 
 class Engine:
     def __init__(self, bars: list[Bar], strategy, *, initial_cash=1_000_000, fees=None,
-                 frequency="1d", sessions=None, start=None, end=None, symbols=None, progress=None):
+                 frequency="1d", sessions=None, start=None, end=None, symbols=None, progress=None,
+                 data_loader=None):
         if frequency not in ("1d", "1m"):
             raise ValueError("频率必须是 1d 或 1m")
         self.frequency = frequency
@@ -62,7 +77,7 @@ class Engine:
         if len(keys) != len(set(keys)):
             raise ValueError("行情存在重复 K 线")
         driving = [b for b in bars if b.frequency == frequency]
-        if not driving:
+        if not driving and not (data_loader and start and end and sessions):
             raise ValueError("没有可用于回测的行情")
         self.start = start or min(b.start.date() for b in driving)
         self.end = end or max(b.start.date() for b in driving)
@@ -83,6 +98,49 @@ class Engine:
         self.context = Context(self)
         self.progress = progress or (lambda value: None)
         self.finishing = False
+        self.initializing = False
+        self.data_loader = data_loader
+        self.loaded_symbols = {b.symbol for b in bars}
+        self.events = defaultdict(lambda: defaultdict(lambda: {"open": {}, "close": []}))
+        self.clock_closes = set()
+        self.initial_bars = list(self.bars)
+        self.bars = []
+        self.legacy_handle_bar = False
+        handler = getattr(strategy, "handle_bar", None)
+        if handler:
+            try:
+                signature(handler).bind(self.context)
+            except TypeError:
+                signature(handler).bind(self.context, {})
+                self.legacy_handle_bar = True
+
+    def ingest(self, bars):
+        """Cache past bars and schedule future events without exposing future OHLC."""
+        for bar in sorted(bars, key=lambda b: (b.end, b.frequency, b.symbol)):
+            if bar.end <= self.now:
+                self.history[(bar.frequency, bar.symbol)].append(bar)
+                self.last_prices[bar.symbol] = bar.close
+            elif bar.start.date() in self.sessions:
+                self.events[bar.start.date()][bar.end]["close"].append(bar)
+            if bar.start >= self.now and bar.start.date() in self.sessions and bar.frequency == self.frequency:
+                self.events[bar.start.date()][bar.start]["open"][bar.symbol] = bar
+        self.bars.extend(bars)
+
+    def ensure_symbol(self, symbol):
+        from .config import RunConfig
+        symbol = RunConfig.symbols_supported([symbol])[0]
+        if symbol not in self.loaded_symbols:
+            if self.data_loader is None:
+                raise ValueError(f"没有 {symbol} 的行情数据")
+            bars = self.data_loader(symbol)
+            keys = [(b.frequency, b.symbol, b.start) for b in bars]
+            if len(keys) != len(set(keys)) or any(b.symbol != symbol for b in bars):
+                raise ValueError("按需行情存在重复或股票代码不匹配")
+            self.ingest(bars)
+            self.loaded_symbols.add(symbol)
+            self.symbols = sorted(self.loaded_symbols)
+            self.context.symbols = tuple(self.symbols)  # Legacy informational view.
+        return symbol
 
     def callback(self, name, *args):
         fn = getattr(self.strategy, name, None)
@@ -99,18 +157,23 @@ class Engine:
                 raise RuntimeError("订单回调连续产生过多委托，请检查策略")
 
     def run(self):
-        events = defaultdict(lambda: defaultdict(lambda: {"open": {}, "close": []}))
-        for bar in self.bars:
-            if bar.end < self.now:
-                self.history[(bar.frequency, bar.symbol)].append(bar)
-                self.last_prices[bar.symbol] = bar.close
-            elif bar.start.date() in self.sessions:
-                events[bar.start.date()][bar.end]["close"].append(bar)
-                if bar.frequency == self.frequency:
-                    events[bar.start.date()][bar.start]["open"][bar.symbol] = bar
-        for values in self.history.values():
-            values.sort(key=lambda b: b.end)
-        self.callback("init")
+        events = self.events
+        self.ingest(self.initial_bars)
+        if self.data_loader:
+            for day in self.sessions:
+                starts = [datetime.combine(day, time(9, 30), SHANGHAI)]
+                if self.frequency == "1m":
+                    starts = [starts[0] + timedelta(minutes=i if i < 120 else i + 90) for i in range(240)]
+                for stamp in starts:
+                    end = stamp + timedelta(minutes=1) if self.frequency == "1m" else stamp.replace(hour=15, minute=0)
+                    events[day][stamp]
+                    events[day][end]
+                    self.clock_closes.add(end)
+        self.initializing = True
+        try:
+            self.callback("init")
+        finally:
+            self.initializing = False
         self.reports()
         for index, session in enumerate(self.sessions):
             self.now = datetime.combine(session, time(9), SHANGHAI)
@@ -126,9 +189,12 @@ class Engine:
                     self.last_prices[bar.symbol] = bar.close
                     if bar.frequency == self.frequency:
                         closed[bar.symbol] = bar
-                if closed:
+                if closed or timestamp in self.clock_closes:
                     self.account.mark({s: b.close for s, b in closed.items()})
-                    self.callback("handle_bar", MappingProxyType(closed))
+                    if self.legacy_handle_bar:
+                        self.callback("handle_bar", MappingProxyType(closed))
+                    else:
+                        self.callback("handle_bar")
                     self.reports()
                 if event["open"]:
                     self.last_prices.update({s: b.open for s, b in event["open"].items()})
@@ -154,6 +220,8 @@ class Engine:
             "account": snapshot, "equity_curve": self.curve,
             "orders": list(self.exchange.orders.values()), "trades": self.exchange.fills,
             "logs": self.logs,
+            "effective_fees": self.account.fees,
+            "loaded_symbols": sorted(self.loaded_symbols),
             "metrics": {"total_return": snapshot["equity"] / self.account.initial_cash - 1,
                         "max_drawdown": drawdown, "trade_count": len(self.exchange.fills)},
         })

@@ -14,7 +14,8 @@ class RunConfig(BaseModel):
     minute_label: Literal["start", "end"] = "end"
     start: date = date(2026, 11, 2)
     end: date = date(2026, 11, 13)
-    symbols: list[str] = Field(default_factory=lambda: ["000001.SZ"], min_length=1, max_length=20)
+    # Compatibility only: new strategies request symbols through context queries/orders.
+    symbols: list[str] = Field(default_factory=list, max_length=20)
     initial_cash: Decimal = Field(default=Decimal("1000000"), gt=0, le=Decimal("1000000000000"))
     commission_rate: Decimal = Field(default=Decimal("0.0003"), ge=0, le=1)
     minimum_commission: Decimal = Field(default=Decimal("5"), ge=0, le=100000)

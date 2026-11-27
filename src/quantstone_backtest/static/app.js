@@ -1,7 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const states = {running:'运行中',completed:'已完成',failed:'失败',cancelled:'已取消',interrupted:'已中断'};
-const fields = ['name','source','frequency','minute_label','start','end','initial_cash','commission_rate','minimum_commission','sell_tax_rate','transfer_rate'];
+const fields = ['name','source','frequency','minute_label','start','end','initial_cash'];
 let strategies = [], currentStrategy = null, selected = null, job = null, timer = null, activeTab = 'positions', exampleCode = '', dirty = false;
 let scope = 'all';
 
@@ -129,7 +129,7 @@ $('run-form').onsubmit=async event=>{
   event.preventDefault();error('');$('run-button').disabled=true;$('run-button-top').disabled=true;
   try{
     if(dirty)await saveStrategy();
-    const config=Object.fromEntries(fields.map(k=>[k,$(k).value]));config.strategy_id=currentStrategy.id;config.strategy=$('strategy').value;config.symbols=$('symbols').value.split(/[,，\s]+/).filter(Boolean);
+    const config=Object.fromEntries(fields.map(k=>[k,$(k).value]));config.strategy_id=currentStrategy.id;config.strategy=$('strategy').value;
     const created=await api('/api/runs',{method:'POST',body:JSON.stringify(config)});setWorktab('results');await select(created.id);
   }catch(e){error(e.message);}finally{$('run-button').disabled=false;$('run-button-top').disabled=false;}
 };
