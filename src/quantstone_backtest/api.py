@@ -5,7 +5,7 @@ from pathlib import Path
 import socket
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import RunConfig
@@ -30,7 +30,10 @@ def host_name(value):
     return name if separator and port.isdigit() else value
 
 
-def create_app(root=None, allowed_hosts=None, strategy_root=None):
+def create_app(root=None, allowed_hosts=None, strategy_root=None, data_source=None):
+    data_source = data_source or os.environ.get("QUANTSTONE_DATA_SOURCE", "demo")
+    if data_source not in {"demo", "sdk"}:
+        raise ValueError("QUANTSTONE_DATA_SOURCE 必须为 demo 或 sdk")
     root = Path(root or os.environ.get("QUANTSTONE_BACKTEST_HOME", "var/runs"))
     strategy_root = Path(strategy_root or root.parent / "strategies")
     accepted_hosts = {host.lower() for host in local_allowed_hosts(allowed_hosts)}
@@ -78,6 +81,18 @@ def create_app(root=None, allowed_hosts=None, strategy_root=None):
     def example():
         return {"strategy": EXAMPLE}
 
+    @app.get("/api/environment")
+    def environment():
+        return {"data_source": data_source}
+
+    @app.get("/strategies/{identifier}")
+    def strategy_page(identifier: str, request: Request):
+        try:
+            request.app.state.strategies.get(identifier)
+        except KeyError as exc:
+            raise HTTPException(404, "策略不存在") from exc
+        return FileResponse(Path(__file__).parent / "static" / "strategy.html")
+
     @app.get("/api/strategies")
     def list_strategies(request: Request):
         strategies = request.app.state.strategies.list()
@@ -122,7 +137,9 @@ def create_app(root=None, allowed_hosts=None, strategy_root=None):
     def create_run(config: RunConfig, request: Request):
         if config.strategy_id:
             try:
-                request.app.state.strategies.get(config.strategy_id)
+                strategy = request.app.state.strategies.get(config.strategy_id)
+                if (config.instrument_type, config.market) != (strategy["instrument_type"], strategy["market"]):
+                    raise HTTPException(422, "回测品种与策略不一致")
             except KeyError as exc:
                 raise HTTPException(422, "关联的策略不存在") from exc
         # Compile only; execution happens exclusively in the child process.
@@ -131,7 +148,8 @@ def create_app(root=None, allowed_hosts=None, strategy_root=None):
         except SyntaxError as exc:
             raise HTTPException(422, f"策略第 {exc.lineno} 行：{exc.msg}") from exc
         try:
-            return request.app.state.jobs.submit(config)
+            # Data routing is deployment policy, never a client-selected parameter.
+            return request.app.state.jobs.submit(config.model_copy(update={"source": data_source}))
         except RuntimeError as exc:
             raise HTTPException(409, str(exc)) from exc
 

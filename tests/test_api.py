@@ -157,3 +157,40 @@ def test_second_server_cannot_own_same_jobs(tmp_path):
             JobManager(tmp_path)
     finally:
         manager.close()
+
+
+def test_separate_strategy_page_and_legacy_instrument(tmp_path):
+    import json
+    with TestClient(create_app(tmp_path / 'runs')) as c:
+        strategy = c.get('/api/strategies').json()[0]
+        path = tmp_path / 'strategies' / f"{strategy['id']}.json"
+        old = json.loads(path.read_text())
+        old.pop('instrument_type')
+        path.write_text(json.dumps(old))
+        assert c.get(f"/api/strategies/{strategy['id']}").json()['instrument_type'] == 'stock'
+        assert 'workbench-view' not in c.get('/').text
+        page = c.get(f"/strategies/{strategy['id']}")
+        assert page.status_code == 200
+        assert 'strategy-view' not in page.text
+        assert 'id="source"' not in page.text
+        assert c.get('/strategies/not-found').status_code == 404
+        for field, value in [('instrument_type', 'future'), ('market', '美股')]:
+            assert c.post('/api/strategies', json={'name': 'x', 'code': EXAMPLE, field: value}, headers=HEADERS).status_code == 422
+            assert c.post('/api/runs', json={'strategy': EXAMPLE, field: value}, headers=HEADERS).status_code == 422
+
+
+def test_data_source_is_owned_by_server_and_instrument_is_persisted(tmp_path):
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
+        assert c.get('/api/environment').json() == {'data_source': 'demo'}
+        response = c.post('/api/runs', json={'strategy': EXAMPLE, 'source': 'sdk'}, headers=HEADERS)
+        assert response.status_code == 201
+        job = wait_job(c, response.json()['id'])
+        assert job['status'] == 'completed'
+        for config in [job, job['config'], job['result']['configuration']]:
+            assert config['source'] == 'demo'
+            assert config['instrument_type'] == 'stock'
+            assert config['market'] == 'A股'
+    with TestClient(create_app(tmp_path, data_source='sdk')) as c:
+        assert c.get('/api/environment').json()['data_source'] == 'sdk'
+    with pytest.raises(ValueError, match='QUANTSTONE_DATA_SOURCE'):
+        create_app(tmp_path, data_source='unknown')

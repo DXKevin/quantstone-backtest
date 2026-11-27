@@ -69,3 +69,9 @@ main{padding:28px 34px 40px;max-width:none}
 button:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 @media(max-width:1100px){main{padding:25px 24px}.app-shell{grid-template-columns:160px minmax(0,1fr)}.side-item{font-size:14px;justify-content:flex-start}.side-bottom{display:flex}.toolbar{align-items:stretch}.search-box{width:100%}.side-item[data-scope]{padding-left:35px}}
 @media(max-width:700px){.topbar{padding:0 15px}.brand{min-width:auto}.brand>span:last-child{display:none}.app-shell,body.sidebar-collapsed .app-shell{display:block}.sidebar{display:none}main{padding:22px 14px}.breadcrumb{margin-bottom:20px}.page-heading{gap:12px;align-items:flex-start}.page-heading h1{font-size:23px}.subhead{font-size:13px;max-width:205px}.primary{white-space:nowrap}.research-tabs{gap:20px;flex-wrap:wrap}.research-summary{display:none}.toolbar{flex-direction:column}.filters{display:flex;flex-wrap:wrap}.filters label{flex:1}.filters select{font-size:13px}.strategy-table{min-width:730px}.list-footer{flex-wrap:wrap}.workbench-actions{flex-wrap:wrap}}
+
+.strategy-row{cursor:pointer}.strategy-row:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+.strategy-name a{font-weight:600;color:var(--ink);text-decoration:none}.strategy-name a:hover{color:var(--blue)}
+.strategy-page main{padding:24px 30px;max-width:none}.strategy-page .topbar nav{color:#c9d2df;font-size:14px}
+.instrument-badge{font-size:12px;color:var(--blue);margin-top:7px}
+@media(max-width:700px){.strategy-page main{padding:18px 14px}}

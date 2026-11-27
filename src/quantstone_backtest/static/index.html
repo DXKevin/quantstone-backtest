@@ -33,57 +33,16 @@
   <section class="strategy-card">
     <div class="toolbar">
       <div class="search-box"><span>⌕</span><label class="sr-only" for="strategy-search">搜索策略</label><input id="strategy-search" type="search" placeholder="搜索策略名称、说明或标签"></div>
-      <div class="filters"><label>市场<select id="market-filter"><option value="">全部市场</option><option>A股</option></select></label><label>频率<select id="frequency-filter"><option value="">全部频率</option><option>日线</option><option>分钟</option><option>日线 + 分钟</option></select></label><label>状态<select id="status-filter"><option value="">全部状态</option><option value="active">启用中</option><option value="archived">已归档</option></select></label></div>
+      <div class="filters"><label>品种<select id="instrument-filter"><option value="">全部品种</option><option value="stock">股票</option></select></label><label>市场<select id="market-filter"><option value="">全部市场</option><option>A股</option></select></label><label>频率<select id="frequency-filter"><option value="">全部频率</option><option>日线</option><option>分钟</option><option>日线 + 分钟</option></select></label><label>状态<select id="status-filter"><option value="">全部状态</option><option value="active">启用中</option><option value="archived">已归档</option></select></label></div>
     </div>
     <div class="strategy-table-wrap">
-      <table class="strategy-table"><thead><tr><th>策略</th><th>市场 / 频率</th><th>标签</th><th>最近回测</th><th>回测次数</th><th>最后修改</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="strategy-list"></tbody></table>
+      <table class="strategy-table"><thead><tr><th>策略</th><th>品种 / 市场 / 频率</th><th>标签</th><th>最近回测</th><th>回测次数</th><th>最后修改</th></tr></thead><tbody id="strategy-list"></tbody></table>
       <div id="strategy-empty" class="empty-state" hidden><div>⌁</div><strong>没有找到策略</strong><p>调整筛选条件，或创建一个新策略。</p></div>
     </div>
   </section>
   <div class="list-footer"><span id="list-count"></span><span>按最后修改时间排序 · 回测状态来自真实任务</span></div>
 </section>
 
-<section id="workbench-view" class="view" hidden>
-  <div class="workbench-heading">
-    <button id="back-button" class="back-button">← 返回策略列表</button>
-    <div class="workbench-title"><div><span id="strategy-status-dot" class="status-dot"></span><h1 id="strategy-title">策略</h1></div><p id="strategy-description"></p></div>
-    <div class="workbench-actions"><span id="save-state">已保存</span><button id="save-strategy-button" class="secondary">保存策略</button><button id="run-button-top" class="primary">运行回测</button></div>
-  </div>
-  <div class="workbench-tabs"><button class="active" data-worktab="code">策略代码</button><button data-worktab="results">回测结果</button><button data-worktab="history">历史记录</button></div>
-  <section id="code-pane" class="work-pane">
-    <div class="workspace">
-      <aside class="strategy-panel panel">
-        <div class="panel-heading"><div><span class="section-label">Python 策略</span><small>strategy.py</small></div><button id="example-button" class="text-button">载入示例</button></div>
-        <label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" spellcheck="false" autocomplete="off"></textarea>
-        <div class="editor-footer"><span>Python · UTF-8</span><button id="help-button" class="text-button">接口说明</button></div>
-        <details id="help"><summary>生命周期与交易接口</summary><div class="help-content"><p><code>init(ctx)</code> 初始化；<code>before_trading(ctx)</code> 盘前；<code>handle_bar(ctx)</code> 按所选频率调用；<code>after_trading(ctx)</code> 盘后。</p><p><code>ctx.current(symbol)</code> 获取最近已完成的 K 线，无数据返回 None；<code>ctx.history(symbol, 20, '1d')</code> 查询已完成历史。查询和下单会自动准备行情，无需设置股票池或订阅。</p><p><code>ctx.order(symbol, 'buy', 100)</code> 下单，下一根开盘尝试成交；<code>ctx.set_fees(commission_rate=0.0003, minimum_commission=5, sell_tax_rate=0.0005, transfer_rate=0.00001)</code> 仅在 init 首次下单前设置。</p><p><code>ctx.portfolio</code> 读取账户；<code>ctx.state</code> 保存策略状态。旧版 <code>handle_bar(ctx, bars)</code> 仍支持，bars 仅包含已自动加载的行情。</p></div></details>
-      </aside>
-      <section class="panel config-panel">
-        <div class="panel-heading"><div><span class="section-label">回测配置</span><small>后一根 K 线开盘撮合</small></div></div>
-        <form id="run-form"><div class="form-grid">
-          <label class="wide">回测名称<input id="name" maxlength="100" required></label>
-          <label>数据来源<select id="source"><option value="demo">合成示例行情</option><option value="sdk">QuantStone 真实数据</option></select></label>
-          <label>运行频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label>
-          <label class="wide">分钟数据时间标签<select id="minute_label"><option value="end">结束时间</option><option value="start">开始时间</option></select></label>
-          <label>开始日期<input id="start" type="date" value="2026-11-02" required></label>
-          <label>结束日期<input id="end" type="date" value="2026-11-13" required></label>
-          <label>初始资金 / 元<input id="initial_cash" type="number" value="1000000" min="1" required></label>
-        </div>
-        <p class="hint">交易对象由策略决定；费用可在 init 中通过 ctx.set_fees(...) 设置。</p>
-        <div class="run-actions"><span id="source-note" class="hint">示例是合成数据，用于验证流程。</span><button type="submit" id="run-button">运行回测</button></div></form>
-      </section>
-    </div>
-  </section>
-  <section id="results-pane" class="work-pane" hidden>
-    <section class="panel results-panel"><div class="panel-heading"><div><span class="section-label">回测结果</span><small id="result-name">等待运行</small></div><span id="status" class="status">尚未开始</span></div><div class="progress-track"><progress id="progress" max="1" value="0"></progress></div>
-      <div class="metrics"><div><span>累计收益</span><strong id="return-value">—</strong></div><div><span>最大回撤</span><strong id="drawdown-value">—</strong></div><div><span>账户总资产</span><strong id="equity-value">—</strong></div><div><span>成交笔数</span><strong id="trades-value">—</strong></div></div>
-      <div id="chart" class="chart"><div class="empty"><strong>从一次回测开始</strong><p>运行策略后，在这里查看账户净值。</p></div></div>
-      <p id="result-note" class="result-note"></p><div class="result-actions"><span id="progress-text" class="hint"></span><div><button id="cancel-button" class="secondary" hidden>取消任务</button><button id="export-button" class="secondary" disabled>导出结果</button></div></div>
-    </section>
-    <section class="panel details-panel"><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-tab="positions">持仓</button><button role="tab" aria-selected="false" data-tab="orders">订单</button><button role="tab" aria-selected="false" data-tab="trades">成交</button><button role="tab" aria-selected="false" data-tab="logs">日志与错误</button></div><div id="detail-content" class="table-container" role="tabpanel"><p class="hint">运行回测后查看明细。</p></div></section>
-  </section>
-  <section id="history-pane" class="work-pane" hidden><section class="panel history-panel"><div class="panel-heading"><div><span class="section-label">该策略的回测历史</span><small>按创建时间倒序</small></div><button id="refresh-button" class="text-button">刷新</button></div><div id="history" class="table-container"></div></section></section>
-</section>
 </main>
 </div>
 <dialog id="strategy-dialog"><form id="strategy-form" method="dialog">
@@ -91,7 +50,7 @@
   <p class="dialog-note">先建立策略档案，进入工作台后再编写代码和运行回测。</p>
   <label>策略名称<input id="new-name" maxlength="100" placeholder="例如：小市值动量策略" required></label>
   <label>策略说明<textarea id="new-description" maxlength="500" placeholder="记录策略假设、适用市场或研究目标"></textarea></label>
-  <div class="dialog-grid"><label>市场<select id="new-market"><option>A股</option></select></label><label>研究频率<select id="new-frequency"><option>日线</option><option>分钟</option><option>日线 + 分钟</option></select></label></div>
+  <div class="dialog-grid"><label>品种<select id="new-instrument"><option value="stock">股票</option></select></label><label>市场<select id="new-market"><option>A股</option></select></label><label>研究频率<select id="new-frequency"><option>日线</option><option>分钟</option><option>日线 + 分钟</option></select></label></div>
   <label>标签<input id="new-tags" placeholder="动量, 多因子, 低波动"></label>
   <div class="dialog-actions"><button type="button" id="dialog-cancel" class="secondary">取消</button><button type="submit" class="primary">创建并进入</button></div>
 </form></dialog>

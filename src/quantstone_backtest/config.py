@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class RunConfig(BaseModel):
+    instrument_type: Literal["stock"] = "stock"
+    market: Literal["A股"] = "A股"
     strategy_id: str | None = Field(default=None, min_length=32, max_length=32)
     name: str = Field(default="新回测", min_length=1, max_length=100)
     strategy: str = Field(min_length=1, max_length=200_000)

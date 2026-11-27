@@ -56,6 +56,7 @@ class JobManager:
             (path / "strategy.py").write_text(config.strategy, encoding="utf-8")
             job = {"id": identifier, "name": config.name, "status": "running", "created_at": now(),
                    "strategy_id": config.strategy_id,
+                   "instrument_type": config.instrument_type, "market": config.market,
                    "source": config.source, "frequency": config.frequency,
                    "start": str(config.start), "end": str(config.end)}
             write_json(path / "job.json", job)
@@ -119,6 +120,8 @@ class JobManager:
     def get(self, identifier, detail=True):
         path = self.path(identifier)
         job = read_json(path / "job.json")
+        job.setdefault("instrument_type", "stock")
+        job.setdefault("market", "A股")
         job["progress"] = read_json(path / "progress.json", {})
         if detail:
             job["config"] = read_json(path / "config.json")

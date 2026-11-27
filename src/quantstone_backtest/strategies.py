@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import threading
 from uuid import uuid4
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -18,7 +19,8 @@ def utc_now() -> str:
 class StrategyInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     description: str = Field(default="", max_length=500)
-    market: str = Field(default="A股", max_length=30)
+    instrument_type: Literal["stock"] = "stock"
+    market: Literal["A股"] = "A股"
     frequency: str = Field(default="日线", max_length=30)
     tags: list[str] = Field(default_factory=list, max_length=8)
     code: str = Field(min_length=1, max_length=200_000)
@@ -72,12 +74,14 @@ class StrategyStore:
 
     def list(self) -> list[dict]:
         with self.lock:
-            items = [read_json(path) for path in self.root.glob("*.json")]
+            items = [self.get(path.stem) for path in self.root.glob("*.json")]
         return sorted(items, key=lambda item: item["updated_at"], reverse=True)
 
     def get(self, identifier: str) -> dict:
         with self.lock:
-            return read_json(self.path(identifier))
+            item = read_json(self.path(identifier))
+            item.setdefault("instrument_type", "stock")
+            return item
 
     def create(self, value: StrategyInput) -> dict:
         now = utc_now()
