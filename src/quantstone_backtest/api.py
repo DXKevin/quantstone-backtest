@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import RunConfig
 from .example import EXAMPLE
 from .jobs import JobManager
-from .strategies import StrategyInput, StrategyStore, StrategyUpdate
+from .strategies import FolderRename, StrategyInput, StrategyStore, StrategyUpdate
 
 
 def local_allowed_hosts(extra_hosts=None):
@@ -129,6 +129,15 @@ def create_app(root=None, allowed_hosts=None, strategy_root=None, data_source=No
             raise HTTPException(422, f"策略第 {exc.lineno} 行：{exc.msg}") from exc
         except KeyError as exc:
             raise HTTPException(404, "策略不存在") from exc
+
+    @app.post("/api/strategy-folders/rename")
+    def rename_strategy_folder(value: FolderRename, request: Request):
+        try:
+            return request.app.state.strategies.rename_folder(value.current, value.replacement)
+        except KeyError as exc:
+            raise HTTPException(404, "策略目录不存在") from exc
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
 
     @app.get("/api/runs")
     def list_runs(request: Request):

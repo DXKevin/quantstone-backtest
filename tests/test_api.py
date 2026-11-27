@@ -99,6 +99,25 @@ def test_strategy_repository_and_run_summary(tmp_path):
         assert strategy['tags'] == ['突破', '盘前选股']
         assert strategy['folder'] == '趋势策略/突破'
 
+        renamed = c.post(
+            '/api/strategy-folders/rename',
+            json={'current': '趋势策略/突破', 'replacement': '趋势策略/均线'},
+            headers=HEADERS,
+        )
+        assert renamed.status_code == 200, renamed.text
+        assert renamed.json()['strategy_count'] == 1
+        assert c.get(f"/api/strategies/{strategy['id']}").json()['folder'] == '趋势策略/均线'
+        assert c.post(
+            '/api/strategy-folders/rename',
+            json={'current': '趋势策略/均线', 'replacement': '默认目录'},
+            headers=HEADERS,
+        ).status_code == 409
+        assert c.post(
+            '/api/strategy-folders/rename',
+            json={'current': '不存在', 'replacement': '新目录'},
+            headers=HEADERS,
+        ).status_code == 404
+
         updated = c.put(
             f"/api/strategies/{strategy['id']}",
             json={**strategy, 'description': '盘后选股，次日日内触发', 'status': 'active'},

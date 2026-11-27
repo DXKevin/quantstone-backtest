@@ -16,6 +16,15 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def normalize_folder(value: str) -> str:
+    parts = [part.strip() for part in value.replace("\\", "/").split("/") if part.strip()]
+    if not parts:
+        return "默认目录"
+    if any(part in {".", ".."} for part in parts):
+        raise ValueError("策略目录不能包含 . 或 ..")
+    return "/".join(parts)
+
+
 class StrategyInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     description: str = Field(default="", max_length=500)
@@ -39,12 +48,17 @@ class StrategyInput(BaseModel):
     @field_validator("folder")
     @classmethod
     def clean_folder(cls, value):
-        parts = [part.strip() for part in value.replace("\\", "/").split("/") if part.strip()]
-        if not parts:
-            return "默认目录"
-        if any(part in {".", ".."} for part in parts):
-            raise ValueError("策略目录不能包含 . 或 ..")
-        return "/".join(parts)
+        return normalize_folder(value)
+
+
+class FolderRename(BaseModel):
+    current: str = Field(min_length=1, max_length=120)
+    replacement: str = Field(min_length=1, max_length=120)
+
+    @field_validator("current", "replacement")
+    @classmethod
+    def clean_folder(cls, value):
+        return normalize_folder(value)
 
 
 class StrategyUpdate(StrategyInput):
@@ -119,3 +133,18 @@ class StrategyStore:
             }
             write_json(self.path(identifier), item)
         return item
+
+    def rename_folder(self, current: str, replacement: str) -> dict:
+        with self.lock:
+            items = [self.get(path.stem) for path in self.root.glob("*.json")]
+            matches = [item for item in items if item["folder"] == current]
+            if not matches:
+                raise KeyError(current)
+            if current != replacement and any(item["folder"] == replacement for item in items):
+                raise ValueError("同名策略目录已存在")
+            now = utc_now()
+            for item in matches:
+                item["folder"] = replacement
+                item["updated_at"] = now
+                write_json(self.path(item["id"]), item)
+        return {"current": current, "replacement": replacement, "strategy_count": len(matches)}

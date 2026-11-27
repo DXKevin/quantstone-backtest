@@ -70,6 +70,13 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", tex
   const element = document.createElement(tag); if (className) element.className = className;
   if (text !== undefined) element.textContent = text; return element;
 }
+function folderIcon() {
+  const namespace = "http://www.w3.org/2000/svg", svg = document.createElementNS(namespace, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true"); svg.classList.add("folder-icon");
+  const path = document.createElementNS(namespace, "path");
+  path.setAttribute("d", "M3.5 6.5c0-.83.67-1.5 1.5-1.5h4.2l2 2H19c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5c-.83 0-1.5-.67-1.5-1.5z");
+  svg.append(path); return svg;
+}
 function strategyStatus(lastRun?: RunSummary) {
   if (!lastRun) return {label: "尚未回测", className: ""};
   return {label: states[lastRun.status] || lastRun.status, className: lastRun.status};
@@ -88,13 +95,33 @@ function renderStrategyList() {
   for (const item of filtered) { const folder = item.folder || "默认目录"; if (!folders.has(folder)) folders.set(folder, []); folders.get(folder)!.push(item); }
   for (const [folder, items] of [...folders.entries()].sort((a, b) => a[0].localeCompare(b[0], "zh-CN"))) {
     const folderRow = node("tr", "folder-row"); folderRow.tabIndex = 0;
-    const folderCell = node("td"); folderCell.colSpan = 6;
+    const folderCell = node("td"); folderCell.colSpan = 6; const folderLine = node("div", "folder-line");
     const folderButton = node("button", "folder-toggle"); folderButton.type = "button";
     const collapsed = collapsedFolders.has(folder); folderButton.setAttribute("aria-expanded", String(!collapsed));
-    folderButton.append(node("span", "folder-caret", collapsed ? "›" : "⌄"), node("span", "folder-icon", "▰"), node("span", "folder-name", folder), node("span", "folder-count", String(items.length)));
+    folderButton.append(node("span", "folder-caret", collapsed ? "›" : "⌄"), folderIcon(), node("span", "folder-name", folder), node("span", "folder-count", String(items.length)));
     const toggle = () => { collapsedFolders.has(folder) ? collapsedFolders.delete(folder) : collapsedFolders.add(folder); try { localStorage.setItem("quantstone.strategyFolders.collapsed", JSON.stringify([...collapsedFolders])); } catch {} renderStrategyList(); };
     folderButton.onclick = toggle; folderRow.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); } };
-    folderCell.append(folderButton); folderRow.append(folderCell); body.append(folderRow); if (collapsed) continue;
+    const renameButton = node("button", "folder-rename", "重命名"); renameButton.type = "button";
+    renameButton.onclick = event => {
+      event.stopPropagation();
+      const form = node("form", "folder-rename-form"), input = node("input", "folder-rename-input"), save = node("button", "folder-rename-save", "保存"), cancel = node("button", "folder-rename-cancel", "取消");
+      input.value = folder; input.maxLength = 120; input.setAttribute("aria-label", "新目录名称"); save.type = "submit"; cancel.type = "button";
+      const restore = () => renderStrategyList(); cancel.onclick = restore;
+      input.onkeydown = keyEvent => { if (keyEvent.key === "Escape") { keyEvent.preventDefault(); restore(); } };
+      form.onsubmit = async submitEvent => {
+        submitEvent.preventDefault(); const replacement = input.value.trim();
+        if (!replacement || replacement === folder) { restore(); return; }
+        save.disabled = true;
+        try {
+          await api<{strategy_count: number}>("/api/strategy-folders/rename", {method: "POST", body: JSON.stringify({current: folder, replacement})});
+          if (collapsedFolders.delete(folder)) collapsedFolders.add(replacement);
+          try { localStorage.setItem("quantstone.strategyFolders.collapsed", JSON.stringify([...collapsedFolders])); } catch {}
+          await loadStrategies();
+        } catch (reason) { showError(errorMessage(reason)); save.disabled = false; input.focus(); }
+      };
+      form.append(folderIcon(), input, save, cancel); folderCell.replaceChildren(form); input.focus(); input.select();
+    };
+    folderLine.append(folderButton, renameButton); folderCell.append(folderLine); folderRow.append(folderCell); body.append(folderRow); if (collapsed) continue;
     for (const item of items) {
       const row = node("tr", "strategy-row"); row.tabIndex = 0; row.setAttribute("aria-label", `进入策略：${item.name}`);
       row.onclick = () => location.assign(`/strategies/${item.id}`); row.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); row.click(); } };
