@@ -178,6 +178,9 @@ def test_separate_strategy_page_and_legacy_instrument(tmp_path):
         assert '载入示例' not in page.text
         assert '接口说明' not in page.text
         assert '生命周期与交易接口' not in page.text
+        assert 'class="section-label">Python 策略' not in page.text
+        assert 'strategy.py' not in page.text
+        assert 'Python · UTF-8' not in page.text
         assert 'id="config-dialog"' in page.text
         assert c.get('/strategies/not-found').status_code == 404
         for field, value in [('instrument_type', 'future'), ('market', '美股')]:
