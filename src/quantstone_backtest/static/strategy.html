@@ -40,18 +40,42 @@
     <div class="confirm-content"><h2 id="leave-title">放弃未保存的修改？</h2><p>当前策略代码尚未保存，返回策略列表后本次修改将丢失。</p><div class="dialog-actions"><button id="leave-cancel" class="secondary" type="button">继续编辑</button><button id="leave-confirm" class="danger-button" type="button">放弃修改</button></div></div>
   </dialog>
   <section id="results-pane" class="work-pane" hidden>
-    <section class="panel results-panel">
-      <header class="result-hero"><div class="result-title"><div><span id="status" class="status">尚未开始</span><h2 id="result-name">等待运行</h2></div><p><span id="result-period">尚未选择回测区间</span><span id="result-environment">—</span></p></div><div class="result-actions"><button id="cancel-button" class="secondary" hidden>取消任务</button><button id="export-button" class="secondary" disabled>导出结果</button></div></header>
-      <div class="progress-track"><progress id="progress" max="1" value="0"></progress><span id="progress-text" class="hint"></span></div>
-      <div id="demo-warning" class="demo-warning" role="note" hidden><strong>当前结果使用合成测试行情</strong><span>仅用于验证回测流程，不能用于评价策略收益或风险。</span></div>
-      <div class="metrics"><article><span>累计收益</span><strong id="return-value">—</strong><small>期末净值相对初始资金</small></article><article><span>最大回撤</span><strong id="drawdown-value">—</strong><small>历史峰值至后续低点</small></article><article><span>账户总资产</span><strong id="equity-value">—</strong><small>现金与持仓市值合计</small></article><article><span>成交笔数</span><strong id="trades-value">—</strong><small>实际完成的成交记录</small></article></div>
-      <div class="result-analysis-grid">
-        <section class="chart-card"><div class="result-section-heading"><div><h3>账户净值</h3><p id="chart-summary">每日收盘后的账户净值</p></div><span id="latest-net-value">—</span></div><div id="chart" class="chart"><div class="empty"><strong>从一次回测开始</strong><p>运行策略后，在这里查看账户净值。</p></div></div></section>
-        <aside class="account-summary"><div class="result-section-heading"><div><h3>账户摘要</h3><p>期末账户快照</p></div></div><dl><div><dt>初始资金</dt><dd id="initial-cash-value">—</dd></div><div><dt>可用资金</dt><dd id="cash-value">—</dd></div><div><dt>持仓市值</dt><dd id="market-value">—</dd></div><div><dt>已实现盈亏</dt><dd id="realized-pnl-value">—</dd></div><div><dt>未实现盈亏</dt><dd id="unrealized-pnl-value">—</dd></div><div><dt>累计费用</dt><dd id="fees-value">—</dd></div></dl></aside>
+    <div class="result-layout">
+      <aside class="result-sidebar" aria-label="回测结果导航">
+        <button class="active" data-result-target="overview">收益概览</button>
+        <button data-result-target="trades">交易明细</button>
+        <button data-result-target="positions">期末持仓</button>
+        <button data-result-target="actions">公司行动</button>
+        <button data-result-target="logs">输出日志</button>
+        <div class="result-sidebar-group"><span>绩效指标</span><a href="#performance-chart">累计收益</a><a href="#daily-return-section">每日收益</a><a href="#trade-timeline-section">成交记录</a><a href="#account-section">账户摘要</a></div>
+      </aside>
+      <div class="result-content">
+        <section id="result-overview" class="panel results-panel">
+          <header class="result-hero"><div class="result-title"><div><span id="status" class="status">尚未开始</span><h2 id="result-name">等待运行</h2></div><p><span id="result-period">尚未选择回测区间</span><span id="result-environment">—</span><span id="result-duration">—</span></p></div><div class="result-actions"><button id="cancel-button" class="secondary" hidden>取消任务</button><button id="export-button" class="secondary" disabled>导出结果</button></div></header>
+          <div class="progress-track"><progress id="progress" max="1" value="0"></progress><span id="progress-text" class="hint"></span></div>
+          <div id="demo-warning" class="demo-warning" role="note" hidden><strong>当前结果使用合成测试行情</strong><span>仅用于验证回测流程，不能用于评价策略收益或风险。</span></div>
+          <div class="performance-strip">
+            <article><span>累计收益</span><strong id="return-value">—</strong></article>
+            <article><span>年化收益</span><strong id="annualized-return-value">—</strong></article>
+            <article><span>最大回撤</span><strong id="drawdown-value">—</strong></article>
+            <article><span>Sharpe</span><strong id="sharpe-value">—</strong></article>
+            <article><span>年化波动率</span><strong id="volatility-value">—</strong></article>
+            <article><span>上涨日占比</span><strong id="positive-day-value">—</strong></article>
+            <article><span>账户总资产</span><strong id="equity-value">—</strong></article>
+            <article><span>成交笔数</span><strong id="trades-value">—</strong></article>
+          </div>
+          <section id="performance-chart" class="wide-chart-section">
+            <div class="result-section-heading"><div><h3>累计收益</h3><p id="chart-summary">每日收盘后的账户收益</p></div><div class="chart-legend"><span class="strategy-line">策略收益</span><span class="baseline-line">初始资金</span><strong id="latest-net-value">—</strong></div></div>
+            <div id="chart" class="chart performance-chart"><div class="empty"><strong>从一次回测开始</strong><p>运行策略后，在这里查看累计收益。</p></div></div>
+          </section>
+          <section id="daily-return-section" class="wide-chart-section compact-chart-section"><div class="result-section-heading"><div><h3>每日收益</h3><p>红色为上涨，绿色为下跌</p></div></div><div id="daily-return-chart" class="chart secondary-chart"><div class="empty"><strong>暂无每日收益</strong></div></div></section>
+          <section id="trade-timeline-section" class="wide-chart-section compact-chart-section"><div class="result-section-heading"><div><h3>成交记录</h3><p>红色买入，蓝色卖出；高度表示成交金额</p></div></div><div id="trade-chart" class="chart trade-chart"><div class="empty"><strong>暂无成交记录</strong></div></div></section>
+          <section id="account-section" class="account-summary"><div class="result-section-heading"><div><h3>账户摘要</h3><p>期末账户快照</p></div></div><dl><div><dt>初始资金</dt><dd id="initial-cash-value">—</dd></div><div><dt>可用资金</dt><dd id="cash-value">—</dd></div><div><dt>持仓市值</dt><dd id="market-value">—</dd></div><div><dt>已实现盈亏</dt><dd id="realized-pnl-value">—</dd></div><div><dt>未实现盈亏</dt><dd id="unrealized-pnl-value">—</dd></div><div><dt>累计费用</dt><dd id="fees-value">—</dd></div></dl></section>
+          <p id="result-note" class="result-note"></p>
+        </section>
+        <section id="result-details" class="panel details-panel"><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-tab="positions">持仓</button><button role="tab" aria-selected="false" data-tab="orders">订单</button><button role="tab" aria-selected="false" data-tab="trades">成交</button><button role="tab" aria-selected="false" data-tab="actions">公司行动</button><button role="tab" aria-selected="false" data-tab="logs">日志与错误</button></div><div id="detail-content" class="table-container" role="tabpanel"><p class="hint">运行回测后查看明细。</p></div></section>
       </div>
-      <p id="result-note" class="result-note"></p>
-    </section>
-    <section class="panel details-panel"><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-tab="positions">持仓</button><button role="tab" aria-selected="false" data-tab="orders">订单</button><button role="tab" aria-selected="false" data-tab="trades">成交</button><button role="tab" aria-selected="false" data-tab="actions">公司行动</button><button role="tab" aria-selected="false" data-tab="logs">日志与错误</button></div><div id="detail-content" class="table-container" role="tabpanel"><p class="hint">运行回测后查看明细。</p></div></section>
+    </div>
   </section>
   <section id="history-pane" class="work-pane" hidden><section class="panel history-panel"><div class="panel-heading"><div><span class="section-label">该策略的回测历史</span><small>按创建时间倒序</small></div><button id="refresh-button" class="text-button">刷新</button></div><div id="history" class="table-container"></div></section></section>
 </section>

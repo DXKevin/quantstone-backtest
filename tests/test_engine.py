@@ -265,6 +265,8 @@ def test_valuation_and_pnl_identity_with_open_position():
     a = result['account']
     assert D(a['total_pnl']) == D(a['realized_pnl']) + D(a['unrealized_pnl'])
     assert D(a['equity']) == D(a['cash']) + D(a['market_value'])
+    assert set(('annualized_return', 'annualized_volatility', 'sharpe', 'positive_day_rate',
+                'max_drawdown_start', 'max_drawdown_end', 'trading_days')) <= result['metrics'].keys()
 
 
 def test_strategy_syntax_error_and_missing_callbacks():

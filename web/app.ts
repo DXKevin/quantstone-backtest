@@ -14,7 +14,7 @@ interface Strategy extends Row {
   updated_at: string; run_count: number; last_run?: RunSummary;
 }
 interface BacktestResult extends Row {
-  metrics: {total_return: string; max_drawdown: string; trade_count: number};
+  metrics: {total_return: string | number; max_drawdown: string | number; trade_count: number; annualized_return?: number; annualized_volatility?: number; sharpe?: number; positive_day_rate?: number; trading_days?: number; max_drawdown_start?: string; max_drawdown_end?: string};
   account: Row & {initial_cash: string; available_cash: string; market_value: string; equity: string; realized_pnl: string; unrealized_pnl: string; total_pnl: string; total_fees: string; net_value: string; positions: Row[]};
   equity_curve: Array<{date: string; net_value: string}>;
   orders: Row[]; trades: Row[]; corporate_actions: Row[]; logs: Array<{time: string; message: string}>; data?: {note?: string};
@@ -151,6 +151,7 @@ function renderStats() {
 async function loadStrategies() { if (isStrategyPage) return; strategies = await api<Strategy[]>("/api/strategies"); renderStats(); renderStrategyList(); }
 function showView(name: "strategies") { if (name === "strategies") { clearTimeout(timer); loadStrategies().catch(reason => showError(errorMessage(reason))); } scrollTo({top: 0}); }
 function setWorktab(name: WorkTab) {
+  document.body.classList.toggle("result-mode", name === "results");
   document.querySelectorAll<HTMLButtonElement>("[data-worktab]").forEach(button => button.classList.toggle("active", button.dataset.worktab === name));
   (["code", "results", "history"] as const).forEach(tab => $(`${tab}-pane`).hidden = tab !== name);
   if (name === "history") loadHistory().catch(reason => showError(errorMessage(reason)));
@@ -174,31 +175,40 @@ function resetResult() {
   $("status").textContent = "尚未开始"; $("result-name").textContent = "等待运行"; $<HTMLProgressElement>("progress").value = 0; $("progress-text").textContent = "";
   $("status").className = "status"; $("result-period").textContent = "尚未选择回测区间"; $("result-environment").textContent = "—"; $("chart-summary").textContent = "每日收盘后的账户净值";
   $("demo-warning").hidden = true;
-  ["return-value", "drawdown-value", "equity-value", "trades-value", "latest-net-value", "initial-cash-value", "cash-value", "market-value", "realized-pnl-value", "unrealized-pnl-value", "fees-value"].forEach(id => { $(id).textContent = "—"; $(id).classList.remove("positive", "negative"); }); $("result-note").textContent = "";
-  $<HTMLButtonElement>("cancel-button").hidden = true; $<HTMLButtonElement>("export-button").disabled = true; emptyChart("运行策略后，在这里查看账户净值。");
+  ["return-value", "annualized-return-value", "drawdown-value", "sharpe-value", "volatility-value", "positive-day-value", "equity-value", "trades-value", "latest-net-value", "initial-cash-value", "cash-value", "market-value", "realized-pnl-value", "unrealized-pnl-value", "fees-value"].forEach(id => { $(id).textContent = "—"; $(id).classList.remove("positive", "negative"); }); $("result-duration").textContent = "—"; $("result-note").textContent = "";
+  $<HTMLButtonElement>("cancel-button").hidden = true; $<HTMLButtonElement>("export-button").disabled = true; emptyChart("运行策略后，在这里查看累计收益。", "chart"); emptyChart("暂无日收益数据", "daily-return-chart"); emptyChart("暂无成交记录", "trade-chart");
   $("detail-content").replaceChildren(node("p", "hint", "运行回测后查看明细。"));
 }
-function emptyChart(message: string) { const div = node("div", "empty"); div.append(node("strong", "", message)); $("chart").replaceChildren(div); }
+function emptyChart(message: string, target = "chart") { const div = node("div", "empty"); div.append(node("strong", "", message)); $(target).replaceChildren(div); }
 
-function chart(rows: BacktestResult["equity_curve"]) {
-  if (!rows.length) { emptyChart("暂无净值数据"); return; }
+function svgChart(target: string, label: string, height: number) {
   const namespace = "http://www.w3.org/2000/svg", svg = document.createElementNS(namespace, "svg");
-  svg.setAttribute("viewBox", "0 0 760 230"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "账户净值曲线");
+  svg.setAttribute("viewBox", `0 0 1000 ${height}`); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", label);
   const make = (name: string, attrs: Record<string, string | number>, text?: string) => { const item = document.createElementNS(namespace, name); Object.entries(attrs).forEach(([key, value]) => item.setAttribute(key, String(value))); if (text !== undefined) item.textContent = text; svg.append(item); return item; };
-  const defs = document.createElementNS(namespace, "defs"), gradient = document.createElementNS(namespace, "linearGradient"); gradient.id = "equity-area"; gradient.setAttribute("x1", "0"); gradient.setAttribute("y1", "0"); gradient.setAttribute("x2", "0"); gradient.setAttribute("y2", "1");
-  [["0%", "#246bfe", ".22"], ["100%", "#246bfe", ".01"]].forEach(([offset, color, opacity]) => { const stop = document.createElementNS(namespace, "stop"); stop.setAttribute("offset", offset); stop.setAttribute("stop-color", color); stop.setAttribute("stop-opacity", opacity); gradient.append(stop); }); defs.append(gradient); svg.append(defs);
-  const values = rows.map(row => Number(row.net_value)); let low = Math.min(1, ...values), high = Math.max(1, ...values); const padding = Math.max((high - low) * .15, .001); low -= padding; high += padding;
-  const x = (index: number) => 62 + index / Math.max(rows.length - 1, 1) * 670, y = (value: number) => 180 - (value - low) / (high - low) * 145;
-  for (let index = 0; index < 4; index++) { const value = low + (high - low) * index / 3; make("line", {x1: 62, y1: y(value), x2: 732, y2: y(value), stroke: "#e9eff6"}); make("text", {x: 52, y: y(value) + 4, "text-anchor": "end", "font-size": 11, fill: "#8a99ad"}, value.toFixed(3)); }
-  make("line", {x1: 62, y1: y(1), x2: 732, y2: y(1), stroke: "#aab6c8", "stroke-dasharray": "4 5"});
-  const path = values.map((value, index) => `${index ? "L" : "M"} ${x(index)} ${y(value)}`).join(" ");
-  make("path", {d: `${path} L ${x(values.length - 1)} 180 L 62 180 Z`, fill: "url(#equity-area)"}); make("path", {d: path, fill: "none", stroke: "#246bfe", "stroke-width": 2.4, "stroke-linejoin": "round"});
-  make("circle", {cx: x(values.length - 1), cy: y(values.at(-1)!), r: 4, fill: "#fff", stroke: "#246bfe", "stroke-width": 2.5});
-  make("text", {x: 62, y: 215, "font-size": 11, fill: "#8a99ad"}, rows[0].date); make("text", {x: 732, y: 215, "text-anchor": "end", "font-size": 11, fill: "#8a99ad"}, rows.at(-1)!.date); $("chart").replaceChildren(svg);
-  const guide = make("line", {x1: 62, y1: 30, x2: 62, y2: 180, stroke: "#94a3b8", opacity: 0}), marker = make("circle", {cx: 62, cy: 30, r: 4, fill: "#246bfe", stroke: "#fff", "stroke-width": 2, opacity: 0});
-  const overlay = make("rect", {x: 62, y: 25, width: 670, height: 165, fill: "transparent"}), tooltip = node("div", "chart-tooltip"); $("chart").append(tooltip);
-  overlay.addEventListener("pointermove", event => { const bounds = svg.getBoundingClientRect(), plotLeft = bounds.left + bounds.width * 62 / 760, plotWidth = bounds.width * 670 / 760; const index = Math.max(0, Math.min(rows.length - 1, Math.round((event.clientX - plotLeft) / plotWidth * (rows.length - 1)))); const pointX = x(index), pointY = y(values[index]); guide.setAttribute("x1", String(pointX)); guide.setAttribute("x2", String(pointX)); guide.setAttribute("opacity", "1"); marker.setAttribute("cx", String(pointX)); marker.setAttribute("cy", String(pointY)); marker.setAttribute("opacity", "1"); tooltip.textContent = `${rows[index].date}　净值 ${fmt(values[index], 4)}`; tooltip.style.left = `${pointX / 760 * 100}%`; tooltip.style.top = `${pointY / 230 * 100}%`; tooltip.classList.add("visible"); });
-  overlay.addEventListener("pointerleave", () => { guide.setAttribute("opacity", "0"); marker.setAttribute("opacity", "0"); tooltip.classList.remove("visible"); });
+  $(target).replaceChildren(svg); return {svg, make};
+}
+function chart(rows: BacktestResult["equity_curve"], metrics: BacktestResult["metrics"]) {
+  if (!rows.length) { emptyChart("暂无累计收益数据"); return; }
+  const {svg, make} = svgChart("chart", "策略累计收益曲线", 330), left = 58, right = 985, top = 20, bottom = 292;
+  const values = rows.map(row => Number(row.net_value) - 1); let low = Math.min(0, ...values), high = Math.max(0, ...values); const padding = Math.max((high - low) * .12, .002); low -= padding; high += padding;
+  const x = (index: number) => left + index / Math.max(rows.length - 1, 1) * (right - left), y = (value: number) => bottom - (value - low) / (high - low) * (bottom - top);
+  const startIndex = rows.findIndex(row => row.date === metrics.max_drawdown_start), endIndex = rows.findIndex(row => row.date === metrics.max_drawdown_end);
+  if (startIndex >= 0 && endIndex >= startIndex) { make("rect", {x:x(startIndex), y:top, width:Math.max(2,x(endIndex)-x(startIndex)), height:bottom-top, fill:"#edf3fb"}); make("text", {x:(x(startIndex)+x(endIndex))/2,y:34,"text-anchor":"middle","font-size":10,fill:"#8392a8"}, "最大回撤区间"); }
+  for (let index = 0; index < 5; index++) { const value = low + (high-low)*index/4; make("line", {x1:left,y1:y(value),x2:right,y2:y(value),stroke:"#e6ebf1"}); make("text", {x:left-9,y:y(value)+4,"text-anchor":"end","font-size":10,fill:"#8592a5"}, `${fmt(value*100,1)}%`); }
+  make("line", {x1:left,y1:y(0),x2:right,y2:y(0),stroke:"#aab4c2","stroke-dasharray":"4 4"});
+  const path = values.map((value,index)=>`${index ? "L":"M"} ${x(index)} ${y(value)}`).join(" "); make("path", {d:path,fill:"none",stroke:"#df5a55","stroke-width":1.8,"stroke-linejoin":"round"});
+  const tickCount = Math.min(6, rows.length), multiYear = rows[0].date.slice(0,4) !== rows.at(-1)!.date.slice(0,4); for (let index=0; index<tickCount; index++) { const rowIndex=Math.round(index*(rows.length-1)/Math.max(1,tickCount-1)); make("text", {x:x(rowIndex),y:318,"text-anchor":index===0?"start":index===tickCount-1?"end":"middle","font-size":10,fill:"#8592a5"}, multiYear ? rows[rowIndex].date : rows[rowIndex].date.slice(5)); }
+  const guide=make("line",{x1:left,y1:top,x2:left,y2:bottom,stroke:"#718096",opacity:0}), marker=make("circle",{cx:left,cy:top,r:4,fill:"#df5a55",stroke:"#fff","stroke-width":2,opacity:0}), overlay=make("rect",{x:left,y:top,width:right-left,height:bottom-top,fill:"transparent"}), tooltip=node("div","chart-tooltip"); $("chart").append(tooltip);
+  overlay.addEventListener("pointermove",event=>{const bounds=svg.getBoundingClientRect(),index=Math.max(0,Math.min(rows.length-1,Math.round(((event.clientX-bounds.left)/bounds.width*1000-left)/(right-left)*(rows.length-1)))),px=x(index),py=y(values[index]); guide.setAttribute("x1",String(px));guide.setAttribute("x2",String(px));guide.setAttribute("opacity","1");marker.setAttribute("cx",String(px));marker.setAttribute("cy",String(py));marker.setAttribute("opacity","1");tooltip.textContent=`${rows[index].date}　累计收益 ${fmt(values[index]*100,2)}%`;tooltip.style.left=`${px/10}%`;tooltip.style.top=`${py/330*100}%`;tooltip.classList.add("visible")}); overlay.addEventListener("pointerleave",()=>{guide.setAttribute("opacity","0");marker.setAttribute("opacity","0");tooltip.classList.remove("visible")});
+}
+function dailyReturnChart(rows: BacktestResult["equity_curve"]) {
+  if (!rows.length) { emptyChart("暂无日收益数据", "daily-return-chart"); return; }
+  const {make}=svgChart("daily-return-chart","每日收益",130), left=58,right=985,top=8,bottom=112; const values=rows.map((row,index)=>index ? Number(row.net_value)/Number(rows[index-1].net_value)-1 : Number(row.net_value)-1), limit=Math.max(.001,...values.map(Math.abs)), y=(value:number)=>60-value/limit*48, barWidth=Math.max(.8,(right-left)/values.length*.72);
+  make("line",{x1:left,y1:60,x2:right,y2:60,stroke:"#aeb8c7"}); values.forEach((value,index)=>{const px=left+index/Math.max(1,values.length-1)*(right-left),py=y(value);const bar=make("rect",{x:px-barWidth/2,y:Math.min(60,py),width:barWidth,height:Math.max(1,Math.abs(py-60)),fill:value>=0?"#e95a55":"#4fbd64"}); const title=document.createElementNS("http://www.w3.org/2000/svg","title");title.textContent=`${rows[index].date} ${fmt(value*100,2)}%`;bar.append(title)}); make("text",{x:left-9,y:13,"text-anchor":"end","font-size":9,fill:"#8592a5"},`${fmt(limit*100,1)}%`);make("text",{x:left-9,y:116,"text-anchor":"end","font-size":9,fill:"#8592a5"},`-${fmt(limit*100,1)}%`);
+}
+function tradeChart(trades: Row[], start: string, end: string) {
+  if (!trades.length) { emptyChart("当前回测没有成交记录", "trade-chart"); return; }
+  const {make}=svgChart("trade-chart","成交记录",120),left=58,right=985,axis=55; const startTime=new Date(start).getTime(), endTime=new Date(end).getTime(), notionals=trades.map(item=>Number(item.price)*Number(item.quantity)),maximum=Math.max(...notionals,1),barWidth=Math.max(2,Math.min(8,(right-left)/trades.length*.5)); make("line",{x1:left,y1:axis,x2:right,y2:axis,stroke:"#b7c0cd"}); trades.forEach((item,index)=>{const time=new Date(item.timestamp).getTime(),px=left+(time-startTime)/Math.max(1,endTime-startTime)*(right-left),height=45*notionals[index]/maximum,buy=item.side==="buy",bar=make("rect",{x:px-barWidth/2,y:buy?axis-height:axis,width:barWidth,height,fill:buy?"#e95a55":"#4d8dd9"});const title=document.createElementNS("http://www.w3.org/2000/svg","title");title.textContent=`${item.timestamp} ${buy?"买入":"卖出"} ${item.symbol} ${fmt(notionals[index])} 元`;bar.append(title)}); make("text",{x:left,y:115,"font-size":9,fill:"#8592a5"},start);make("text",{x:right,y:115,"text-anchor":"end","font-size":9,fill:"#8592a5"},end);
 }
 function table<T extends Row>(container: HTMLElement, columns: TableColumn<T>[], rows: T[]) {
   container.replaceChildren(); if (!rows.length) { container.append(node("p", "hint", "暂无记录")); return; }
@@ -220,18 +230,21 @@ function render() {
   if (!job) return; $("status").textContent = states[job.status] || job.status; $("status").className = `status ${job.status}`; $("result-name").textContent = job.name;
   $("result-period").textContent = `${job.start} — ${job.end}`; $("result-environment").textContent = `${job.frequency === "1m" ? "1 分钟" : "日线"} · ${job.source === "demo" ? "合成测试行情（非真实）" : "真实行情"}`; $("demo-warning").hidden = job.source !== "demo";
   const progress = job.progress || {}; $<HTMLProgressElement>("progress").value = job.status === "completed" ? 1 : Math.min(1, (progress.completed || 0) / (progress.total || 1));
-  $("progress-text").textContent = progress.total ? `${progress.stage === "loading" ? "加载数据" : "回放交易日"} ${progress.completed}/${progress.total} ${progress.date || ""}` : "";
+  $("progress-text").textContent = job.status === "running" && progress.total ? `${progress.stage === "loading" ? "加载数据" : "回放交易日"} ${progress.completed}/${progress.total} ${progress.date || ""}` : "";
   $<HTMLButtonElement>("cancel-button").hidden = job.status !== "running"; $<HTMLButtonElement>("export-button").disabled = !job.result;
-  const result = job.result; $("return-value").textContent = result ? `${fmt(Number(result.metrics.total_return) * 100)}%` : "—"; $("drawdown-value").textContent = result ? `${fmt(Number(result.metrics.max_drawdown) * 100)}%` : "—";
-  $("equity-value").textContent = result ? fmt(result.account.equity) : "—"; $("trades-value").textContent = result ? String(result.metrics.trade_count) : "—"; $("result-note").textContent = result?.data?.note || "";
+  const result = job.result, percent = (value?: string | number) => value === undefined || value === null ? "—" : `${fmt(Number(value) * 100)}%`;
+  $("return-value").textContent = result ? percent(result.metrics.total_return) : "—"; $("annualized-return-value").textContent = result ? percent(result.metrics.annualized_return) : "—"; $("drawdown-value").textContent = result ? percent(result.metrics.max_drawdown) : "—";
+  $("sharpe-value").textContent = result?.metrics.sharpe === undefined ? "—" : fmt(result.metrics.sharpe, 2); $("volatility-value").textContent = result ? percent(result.metrics.annualized_volatility) : "—"; $("positive-day-value").textContent = result ? percent(result.metrics.positive_day_rate) : "—";
+  $("equity-value").textContent = result ? fmt(result.account.equity) : "—"; $("trades-value").textContent = result ? String(result.metrics.trade_count) : "—"; $("result-duration").textContent = result?.metrics.trading_days ? `${result.metrics.trading_days} 个交易日` : "—"; $("result-note").textContent = result?.data?.note || "";
   if (result) {
     const account = result.account, tone = (id: string, value: string | number) => $(id).classList.add(Number(value) >= 0 ? "positive" : "negative");
     $("latest-net-value").textContent = `最新 ${fmt(account.net_value, 4)}`; $("chart-summary").textContent = `${result.equity_curve.length} 个交易日 · 起始净值 1.0000`;
     $("initial-cash-value").textContent = fmt(account.initial_cash); $("cash-value").textContent = fmt(account.available_cash); $("market-value").textContent = fmt(account.market_value);
     $("realized-pnl-value").textContent = fmt(account.realized_pnl); $("unrealized-pnl-value").textContent = fmt(account.unrealized_pnl); $("fees-value").textContent = fmt(account.total_fees);
-    tone("return-value", result.metrics.total_return); tone("realized-pnl-value", account.realized_pnl); tone("unrealized-pnl-value", account.unrealized_pnl);
+    tone("return-value", result.metrics.total_return); if (result.metrics.annualized_return !== undefined) tone("annualized-return-value", result.metrics.annualized_return); tone("realized-pnl-value", account.realized_pnl); tone("unrealized-pnl-value", account.unrealized_pnl);
   }
-  if (result) chart(result.equity_curve); else emptyChart(job.status === "running" ? "正在加载数据或回放行情…" : job.error ? "运行失败，请查看日志。" : "没有可展示的结果。"); detail();
+  if (result) { chart(result.equity_curve, result.metrics); dailyReturnChart(result.equity_curve); tradeChart(result.trades, job.start, job.end); }
+  else { emptyChart(job.status === "running" ? "正在加载数据或回放行情…" : job.error ? "运行失败，请查看日志。" : "没有可展示的结果。"); emptyChart("暂无日收益数据", "daily-return-chart"); emptyChart("暂无成交记录", "trade-chart"); } detail();
 }
 async function selectRun(id: string) {
   selected = id; clearTimeout(timer); const current = await api<Job>(`/api/runs/${id}`); if (selected !== id) return; job = current; render();
@@ -286,7 +299,12 @@ if (!isStrategyPage) {
 }
 
 void (async () => { try { if (isStrategyPage) await openStrategy(location.pathname.split("/").pop() || ""); else { exampleCode = (await api<{strategy: string}>("/api/example")).strategy; await loadStrategies(); } } catch (reason) { showError(errorMessage(reason)); } })();
-document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(button => button.onclick = () => { activeTab = (button.dataset.tab || "positions") as DetailTab; document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(item => item.setAttribute("aria-selected", String(item === button))); detail(); });
+function setDetailTab(tab: DetailTab) { activeTab = tab; document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(item => item.setAttribute("aria-selected", String(item.dataset.tab === tab))); detail(); }
+document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(button => button.onclick = () => setDetailTab((button.dataset.tab || "positions") as DetailTab));
+document.querySelectorAll<HTMLButtonElement>("[data-result-target]").forEach(button => button.onclick = () => {
+  document.querySelectorAll<HTMLButtonElement>("[data-result-target]").forEach(item => item.classList.toggle("active", item === button)); const target = button.dataset.resultTarget || "overview";
+  if (["trades", "positions", "actions", "logs"].includes(target)) { setDetailTab(target as DetailTab); $("result-details").scrollIntoView({behavior:"smooth",block:"start"}); } else $("result-overview").scrollIntoView({behavior:"smooth",block:"start"});
+});
 document.querySelectorAll<HTMLButtonElement>("[data-worktab]").forEach(button => button.onclick = () => setWorktab((button.dataset.worktab || "code") as WorkTab));
 
 export {};

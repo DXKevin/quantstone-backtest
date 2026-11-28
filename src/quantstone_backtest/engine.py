@@ -4,6 +4,8 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, time, timedelta
 from inspect import signature
+from math import sqrt
+from statistics import fmean, pstdev
 from types import MappingProxyType, SimpleNamespace
 
 from .account import Account
@@ -233,9 +235,23 @@ class Engine:
         snapshot = self.account.snapshot()
         peak = self.account.initial_cash
         drawdown = ZERO
-        for row in self.curve:
-            peak = max(peak, row["equity"])
-            drawdown = max(drawdown, (peak - row["equity"]) / peak)
+        peak_index = trough_index = 0
+        current_peak_index = 0
+        for index, row in enumerate(self.curve):
+            if row["equity"] > peak:
+                peak, current_peak_index = row["equity"], index
+            current_drawdown = (peak - row["equity"]) / peak
+            if current_drawdown > drawdown:
+                drawdown, peak_index, trough_index = current_drawdown, current_peak_index, index
+        net_values = [float(row["net_value"]) for row in self.curve]
+        daily_returns = [current / previous - 1 for previous, current in zip(net_values, net_values[1:]) if previous]
+        periods = max(len(daily_returns), 1)
+        total_return = snapshot["equity"] / self.account.initial_cash - 1
+        annualized_return = (float(snapshot["net_value"]) ** (252 / periods) - 1) if self.curve else 0
+        daily_volatility = pstdev(daily_returns) if len(daily_returns) > 1 else 0
+        annualized_volatility = daily_volatility * sqrt(252)
+        sharpe = fmean(daily_returns) / daily_volatility * sqrt(252) if daily_volatility else 0
+        positive_days = sum(value > 0 for value in daily_returns)
         return jsonable({
             "account": snapshot, "equity_curve": self.curve,
             "orders": list(self.exchange.orders.values()), "trades": self.exchange.fills,
@@ -243,8 +259,18 @@ class Engine:
             "effective_fees": self.account.fees,
             "loaded_symbols": sorted(self.loaded_symbols),
             "corporate_actions": self.corporate_actions,
-            "metrics": {"total_return": snapshot["equity"] / self.account.initial_cash - 1,
-                        "max_drawdown": drawdown, "trade_count": len(self.exchange.fills)},
+            "metrics": {
+                "total_return": total_return,
+                "annualized_return": annualized_return,
+                "annualized_volatility": annualized_volatility,
+                "sharpe": sharpe,
+                "positive_day_rate": positive_days / len(daily_returns) if daily_returns else 0,
+                "max_drawdown": drawdown,
+                "max_drawdown_start": self.curve[peak_index]["date"] if self.curve else None,
+                "max_drawdown_end": self.curve[trough_index]["date"] if self.curve else None,
+                "trade_count": len(self.exchange.fills),
+                "trading_days": len(self.curve),
+            },
         })
 
 
