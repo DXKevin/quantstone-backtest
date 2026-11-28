@@ -210,7 +210,9 @@ def test_separate_strategy_page_and_legacy_instrument(tmp_path):
         assert 'id="config-dialog"' in page.text
         assert 'id="leave-dialog"' in page.text
         assert 'id="strategy-editor"' in page.text
-        assert 'src="/editor.js"' in page.text
+        assert 'src="/editor.js?v=' in page.text
+        assert page.headers['cache-control'] == 'no-cache'
+        assert c.get('/research.css').headers['cache-control'] == 'no-cache'
         assert 'breadcrumb-strategy' not in page.text
         assert 'strategy-status-dot' not in page.text
         assert '>保存策略<' not in page.text

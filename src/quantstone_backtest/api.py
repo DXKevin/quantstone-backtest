@@ -70,6 +70,10 @@ def create_app(root=None, allowed_hosts=None, strategy_root=None, data_source=No
                 return JSONResponse({"detail": "不允许跨站写操作"}, status_code=403)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
+        # This is a local research workbench: stale JS/CSS can leave new HTML unusable.
+        # Always revalidate pages and static assets after a deployment or service restart.
+        if request.url.path.endswith((".html", ".css", ".js")) or request.url.path == "/" or request.url.path.startswith("/strategies/"):
+            response.headers["Cache-Control"] = "no-cache"
         # CodeMirror uses style-mod to inject its bundled theme and layout rules.
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'"
         return response
