@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-16"><link rel="stylesheet" href="/research.css?v=20261128-16"><script defer src="/app.js?v=20261128-16"></script><script type="module" src="/editor.js?v=20261128-16"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-17"><link rel="stylesheet" href="/research.css?v=20261128-17"><script defer src="/app.js?v=20261128-17"></script><script type="module" src="/editor.js?v=20261128-17"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
@@ -75,6 +75,7 @@
           </section>
           <section id="daily-return-section" class="wide-chart-section compact-chart-section"><div class="result-section-heading"><div><h3>每日收益</h3><p>红色为上涨，绿色为下跌</p></div></div><div id="daily-return-chart" class="chart secondary-chart"><div class="empty"><strong>暂无每日收益</strong></div></div></section>
           <section id="trade-section" class="wide-chart-section compact-chart-section"><div class="result-section-heading"><div><h3>每日成交</h3><p>红色买入 · 蓝色卖出 · 金额 / 元</p></div></div><div id="trade-chart" class="chart secondary-chart"></div></section>
+          <div id="chart-range-control" class="chart-range-control"><span id="chart-range-start-label">—</span><div class="chart-range-track"><div class="chart-range-selection"></div><input id="chart-range-start" type="range" min="0" max="1000" value="0" aria-label="图表范围开始"><input id="chart-range-end" type="range" min="0" max="1000" value="1000" aria-label="图表范围结束"></div><span id="chart-range-end-label">—</span></div>
         </section>
         <section id="result-details" class="result-detail-page" hidden><header><div><h2 id="result-detail-title">交易明细</h2><p id="result-detail-description">回测期间的实际成交记录</p></div><span id="result-detail-count">0 条记录</span></header><div id="detail-date-toolbar" class="detail-date-toolbar" hidden><label>开始日期<input id="detail-date-start" type="date"></label><span>至</span><label>结束日期<input id="detail-date-end" type="date"></label><button id="detail-date-query" class="primary" type="button">查询</button><button id="detail-date-all" class="text-button" type="button">全部日期</button><span id="detail-date-summary"></span></div><div id="detail-content" class="table-container"><p class="hint">运行回测后查看明细。</p></div></section>
       </div>
