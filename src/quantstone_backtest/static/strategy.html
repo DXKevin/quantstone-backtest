@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-6"><link rel="stylesheet" href="/research.css?v=20261128-6"><script defer src="/app.js?v=20261128-6"></script><script type="module" src="/editor.js?v=20261128-6"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-7"><link rel="stylesheet" href="/research.css?v=20261128-7"><script defer src="/app.js?v=20261128-7"></script><script type="module" src="/editor.js?v=20261128-7"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
@@ -44,10 +44,8 @@
       <aside class="result-sidebar" aria-label="回测结果导航">
         <button class="active" data-result-target="overview">收益概览</button>
         <button data-result-target="trades">交易明细</button>
-        <button data-result-target="positions">期末持仓</button>
-        <button data-result-target="actions">公司行动</button>
+        <button data-result-target="positions">历史持仓</button>
         <button data-result-target="logs">输出日志</button>
-        <div class="result-sidebar-group"><span>绩效指标</span><a href="#performance-chart">累计收益</a><a href="#daily-return-section">每日收益</a><a href="#trade-timeline-section">成交记录</a><a href="#account-section">账户摘要</a></div>
       </aside>
       <div class="result-content">
         <section id="result-overview" class="panel results-panel">
@@ -70,10 +68,9 @@
           </section>
           <section id="daily-return-section" class="wide-chart-section compact-chart-section"><div class="result-section-heading"><div><h3>每日收益</h3><p>红色为上涨，绿色为下跌</p></div></div><div id="daily-return-chart" class="chart secondary-chart"><div class="empty"><strong>暂无每日收益</strong></div></div></section>
           <section id="trade-timeline-section" class="wide-chart-section compact-chart-section"><div class="result-section-heading"><div><h3>成交记录</h3><p>红色买入，蓝色卖出；高度表示成交金额</p></div></div><div id="trade-chart" class="chart trade-chart"><div class="empty"><strong>暂无成交记录</strong></div></div></section>
-          <section id="account-section" class="account-summary"><div class="result-section-heading"><div><h3>账户摘要</h3><p>期末账户快照</p></div></div><dl><div><dt>初始资金</dt><dd id="initial-cash-value">—</dd></div><div><dt>可用资金</dt><dd id="cash-value">—</dd></div><div><dt>持仓市值</dt><dd id="market-value">—</dd></div><div><dt>已实现盈亏</dt><dd id="realized-pnl-value">—</dd></div><div><dt>未实现盈亏</dt><dd id="unrealized-pnl-value">—</dd></div><div><dt>累计费用</dt><dd id="fees-value">—</dd></div></dl></section>
           <p id="result-note" class="result-note"></p>
         </section>
-        <section id="result-details" class="result-detail-page" hidden><header><div><h2 id="result-detail-title">交易明细</h2><p id="result-detail-description">回测期间的实际成交记录</p></div><span id="result-detail-count">0 条记录</span></header><div id="detail-content" class="table-container"><p class="hint">运行回测后查看明细。</p></div></section>
+        <section id="result-details" class="result-detail-page" hidden><header><div><h2 id="result-detail-title">交易明细</h2><p id="result-detail-description">回测期间的实际成交记录</p></div><span id="result-detail-count">0 条记录</span></header><div id="detail-date-toolbar" class="detail-date-toolbar" hidden><button id="detail-date-previous" class="secondary" type="button">上一日</button><input id="detail-date" type="date" aria-label="查询日期"><button id="detail-date-next" class="secondary" type="button">下一日</button><button id="detail-date-all" class="text-button" type="button">全部日期</button><span id="detail-date-summary"></span></div><div id="detail-content" class="table-container"><p class="hint">运行回测后查看明细。</p></div></section>
       </div>
     </div>
   </section>

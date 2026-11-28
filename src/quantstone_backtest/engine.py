@@ -104,6 +104,7 @@ class Engine:
         self.last_prices = {}
         self.logs = []
         self.curve = []
+        self.position_history = []
         self.now = datetime.combine(self.start, time(9), SHANGHAI)
         self.context = Context(self)
         self.progress = progress or (lambda value: None)
@@ -114,7 +115,6 @@ class Engine:
         self.events = defaultdict(lambda: defaultdict(lambda: {"open": {}, "close": []}))
         self.clock_closes = set()
         self.adjustments = defaultdict(dict)
-        self.corporate_actions = []
         self.initial_bars = list(self.bars)
         self.bars = []
         self.legacy_handle_bar = False
@@ -196,8 +196,13 @@ class Engine:
             self.now = datetime.combine(session, time(9), SHANGHAI)
             for symbol, ratio in sorted(self.adjustments[session].items()):
                 action = self.exchange.apply_corporate_action(symbol, ratio, self.now)
-                action["date"] = session.isoformat()
-                self.corporate_actions.append(action)
+                self.logs.append({
+                    "time": self.now.isoformat(),
+                    "message": (
+                        f"复权调整 {symbol}：比例 {action['ratio']}，持股 "
+                        f"{action['quantity_before']} → {action['quantity_after']}（分红再投资）"
+                    ),
+                })
             self.reports()
             self.account.new_session()
             self.callback("before_trading")
@@ -227,6 +232,7 @@ class Engine:
             self.reports()
             snapshot = self.account.snapshot()
             self.curve.append({"date": session.isoformat(), "equity": snapshot["equity"], "net_value": snapshot["net_value"]})
+            self.position_history.append({"date": session.isoformat(), "positions": snapshot["positions"]})
             self.progress({"completed": index + 1, "total": len(self.sessions), "date": session.isoformat(),
                            "equity_point": self.curve[-1]})
         self.finishing = True
@@ -259,7 +265,7 @@ class Engine:
             "logs": self.logs,
             "effective_fees": self.account.fees,
             "loaded_symbols": sorted(self.loaded_symbols),
-            "corporate_actions": self.corporate_actions,
+            "position_history": self.position_history,
             "metrics": {
                 "total_return": total_return,
                 "annualized_return": annualized_return,

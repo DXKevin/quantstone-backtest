@@ -145,9 +145,14 @@ def test_corporate_action_reinvests_into_fractional_shares_and_can_sell_all():
     ).run()
     assert [trade['quantity'] for trade in result['trades']] == [100, '100.5']
     assert result['account']['positions'] == []
-    assert result['corporate_actions'] == [{
-        'symbol': S, 'ratio': '1.005', 'quantity_before': 100,
-        'quantity_after': '100.5', 'date': '2026-11-04',
+    assert [row['date'] for row in result['position_history']] == [
+        '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05',
+    ]
+    assert result['position_history'][2]['positions'][0]['quantity'] == '100.5'
+    assert 'corporate_actions' not in result
+    assert result['logs'] == [{
+        'time': '2026-11-04T09:00:00+08:00',
+        'message': f'复权调整 {S}：比例 1.005，持股 100 → 100.5（分红再投资）',
     }]
 
 
