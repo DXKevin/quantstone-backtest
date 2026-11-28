@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import ast
 from ipaddress import ip_address
 import os
 from pathlib import Path
@@ -7,11 +8,16 @@ import socket
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from .config import RunConfig
 from .example import EXAMPLE
 from .jobs import JobManager
 from .strategies import FolderRename, StrategyInput, StrategyStore, StrategyUpdate
+
+
+class StrategyCompileRequest(BaseModel):
+    strategy: str = Field(min_length=1, max_length=200_000)
 
 
 def local_allowed_hosts(extra_hosts=None):
@@ -142,6 +148,22 @@ def create_app(root=None, allowed_hosts=None, strategy_root=None, data_source=No
             raise HTTPException(404, "策略目录不存在") from exc
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
+
+    @app.post("/api/strategies/compile")
+    def compile_strategy(value: StrategyCompileRequest):
+        try:
+            tree = ast.parse(value.strategy, filename="strategy.py", mode="exec")
+            compile(tree, "strategy.py", "exec")
+        except SyntaxError as exc:
+            raise HTTPException(422, f"策略第 {exc.lineno} 行：{exc.msg}") from exc
+        callbacks = [
+            node.name for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name in {"init", "before_trading", "handle_bar", "after_trading", "on_order", "on_trade", "on_finish"}
+        ]
+        if not any(name in callbacks for name in ("before_trading", "handle_bar", "after_trading")):
+            raise HTTPException(422, "策略至少需要定义一个盘前、行情或盘后回调")
+        return {"status": "ok", "message": "编译通过", "callbacks": callbacks}
 
     @app.get("/api/runs")
     def list_runs(request: Request):

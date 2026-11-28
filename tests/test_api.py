@@ -74,6 +74,19 @@ def test_validation_and_cross_site_requests(tmp_path):
         assert c.get('/api/health', headers={'Host':'evil.example'}).status_code == 400
 
 
+def test_compile_strategy_without_creating_report(tmp_path):
+    with TestClient(create_app(tmp_path, data_source='demo')) as c:
+        response = c.post('/api/strategies/compile', json={'strategy': EXAMPLE}, headers=HEADERS)
+        assert response.status_code == 200
+        assert response.json()['message'] == '编译通过'
+        assert 'handle_bar' in response.json()['callbacks']
+        assert c.get('/api/runs').json() == []
+        broken = c.post('/api/strategies/compile', json={'strategy': 'def broken('}, headers=HEADERS)
+        assert broken.status_code == 422
+        missing = c.post('/api/strategies/compile', json={'strategy': 'def init(context):\n    pass'}, headers=HEADERS)
+        assert missing.status_code == 422
+
+
 def test_strategy_repository_and_run_summary(tmp_path):
     runs, strategy_root = tmp_path / 'runs', tmp_path / 'strategies'
     with TestClient(create_app(runs, strategy_root=strategy_root, data_source='demo')) as c:

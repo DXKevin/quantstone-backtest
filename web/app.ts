@@ -25,6 +25,7 @@ interface Job extends RunSummary {
 }
 interface ApiErrorDetail {loc: Array<string | number>; msg: string}
 interface ApiErrorResponse {detail?: string | ApiErrorDetail[]}
+interface CompileResult {status: "ok"; message: string; callbacks: string[]}
 type TableColumn<T extends Row> = [string, (row: T) => string | number | Node | null | undefined];
 
 declare global {
@@ -40,7 +41,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
 };
 const formValue = (id: string) => $<HTMLInputElement | HTMLSelectElement>(id).value;
 const states: Record<string, string> = {running: "运行中", completed: "已完成", failed: "失败", cancelled: "已取消", interrupted: "已中断"};
-const fields = ["name", "frequency", "minute_label", "start", "end", "initial_cash"] as const;
+const fields = ["frequency", "start", "end", "initial_cash"] as const;
 let strategies: Strategy[] = [], currentStrategy: Strategy | null = null, selected: string | null = null, job: Job | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined, activeTab: DetailTab = "positions", tradeDateStart = "", tradeDateEnd = "", exampleCode = "", dirty = false;
 const chartRanges = new Map<string, {low: number; high: number}>(), dailyReturnLimits = new Map<string, number>();
@@ -163,7 +164,7 @@ async function openStrategy(identifier: string) {
   try {
     showError(""); currentStrategy = await api<Strategy>(`/api/strategies/${identifier}`); dirty = false;
     $("strategy-title").textContent = currentStrategy.name; $("strategy-description").textContent = currentStrategy.description || "暂无策略说明"; setStrategyCode(currentStrategy.code);
-    $<HTMLInputElement>("name").value = `${currentStrategy.name} · 回测`; $("save-state").hidden = true; document.title = `${currentStrategy.name} · QuantStone`;
+    $("save-state").hidden = true; document.title = `${currentStrategy.name} · QuantStone`;
     $("strategy-instrument").textContent = `股票 / ${currentStrategy.market}`; $<HTMLSelectElement>("frequency").value = currentStrategy.frequency === "分钟" ? "1m" : "1d";
     job = null; selected = null; resetResult(); setWorktab("code");
   } catch (reason) { showError(errorMessage(reason)); }
@@ -279,7 +280,7 @@ function detail() {
 }
 function renderWorkspace() {
   if(!job)return;const rows=job.result?.equity_curve||job.preview?.equity_curve||[],latest=rows.at(-1),progress=job.progress||{};
-  workspaceChart(rows);$("workspace-run-status").textContent=states[job.status]||job.status;$("workspace-chart-caption").textContent=`${job.start} — ${job.end}${job.result?.benchmark?.symbol?` · ${job.result.benchmark.symbol}`:""}`;
+  workspaceChart(rows);$("workspace-run-status").textContent=job.status==="completed"?"报告已生成":states[job.status]||job.status;$("workspace-chart-caption").textContent=`${job.start} — ${job.end}${job.result?.benchmark?.symbol?` · ${job.result.benchmark.symbol}`:""}`;
   const totalReturn=latest?Number(latest.net_value)-1:null;$("workspace-return").textContent=totalReturn===null?"—":`${totalReturn>=0?"+":""}${fmt(totalReturn*100,2)}%`;$("workspace-return").className=totalReturn===null?"":totalReturn>=0?"positive":"negative";
   const lines=[...(job.result?.logs||[]).map(entry=>`${entry.time}  ${entry.message}`)];if(job.status==="running")lines.push(`[引擎] ${progress.stage==="loading"?"加载数据":"回放交易日"} ${progress.completed||0}/${progress.total||"—"} ${progress.date||""}`);if(job.console?.trim())lines.push(job.console.trim());if(job.error?.trim())lines.push(job.error.trim());$("workspace-log").textContent=lines.filter(Boolean).join("\n")||"暂无日志输出。";
 }
@@ -318,9 +319,15 @@ if (isStrategyPage) {
   $<HTMLFormElement>("run-form").onsubmit = async event => {
     event.preventDefault(); showError(""); $<HTMLButtonElement>("run-button").disabled = true;
     try { if (dirty) await saveStrategy(); if (!currentStrategy) throw new Error("策略尚未载入");
-      const config: Row = Object.fromEntries(fields.map(key => [key, formValue(key)])); Object.assign(config, {strategy_id: currentStrategy.id, instrument_type: currentStrategy.instrument_type, market: currentStrategy.market, strategy: getStrategyCode()});
+      const config: Row = Object.fromEntries(fields.map(key => [key, formValue(key)])); Object.assign(config, {name: `${currentStrategy.name} · ${formValue("start")} 至 ${formValue("end")}`, minute_label: "end", strategy_id: currentStrategy.id, instrument_type: currentStrategy.instrument_type, market: currentStrategy.market, strategy: getStrategyCode()});
       const created = await api<RunSummary>("/api/runs", {method: "POST", body: JSON.stringify(config)}); setWorktab("code"); await selectRun(created.id);
     } catch (reason) { showError(errorMessage(reason)); } finally { $<HTMLButtonElement>("run-button").disabled = false; }
+  };
+  $<HTMLButtonElement>("compile-button").onclick = async () => {
+    const button = $<HTMLButtonElement>("compile-button"); button.disabled = true; showError(""); $("workspace-run-status").textContent = "编译中"; $("workspace-log").textContent = "[编译] 正在检查 strategy.py…";
+    try { const result = await api<CompileResult>("/api/strategies/compile", {method: "POST", body: JSON.stringify({strategy: getStrategyCode()})}); $("workspace-run-status").textContent = result.message; $("workspace-log").textContent = `[编译] ${result.message}\n策略入口：${result.callbacks.join(", ")}`; }
+    catch (reason) { $("workspace-run-status").textContent = "编译失败"; $("workspace-log").textContent = `[编译错误] ${errorMessage(reason)}`; }
+    finally { button.disabled = false; }
   };
   $<HTMLButtonElement>("save-strategy-button").onclick = () => { saveStrategy().catch(reason => showError(errorMessage(reason))); };
   $<HTMLButtonElement>("cancel-button").onclick = async () => { try { if (!selected) return; await api(`/api/runs/${selected}/cancel`, {method: "POST"}); await selectRun(selected); } catch (reason) { showError(errorMessage(reason)); } };

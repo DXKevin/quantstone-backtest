@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-14"><link rel="stylesheet" href="/research.css?v=20261128-14"><script defer src="/app.js?v=20261128-14"></script><script type="module" src="/editor.js?v=20261128-14"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-15"><link rel="stylesheet" href="/research.css?v=20261128-15"><script defer src="/app.js?v=20261128-15"></script><script type="module" src="/editor.js?v=20261128-15"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
@@ -15,7 +15,7 @@
       <div class="workbench-actions"><span id="save-state" hidden></span><button id="save-strategy-button" class="secondary">保存</button></div>
     </div>
   </div>
-  <div class="workbench-tabs"><button class="active" data-worktab="code">策略代码</button><button data-worktab="results">回测结果</button><button data-worktab="history">历史记录</button></div>
+  <div class="workbench-tabs"><button class="active" data-worktab="code">策略代码</button><button data-worktab="results">回测报告</button><button data-worktab="history">历史记录</button></div>
   <section id="code-pane" class="work-pane">
     <div class="developer-workspace">
       <section class="strategy-panel panel">
@@ -23,11 +23,9 @@
       </section>
       <aside class="workspace-runtime">
         <form id="run-form" class="inline-run-config">
-          <div class="inline-config-heading"><div><h2>回测配置</h2><span>后一根 K 线开盘撮合</span></div><button type="submit" id="run-button" class="primary">运行回测</button></div>
+          <div class="inline-config-heading"><div><h2>回测配置</h2><span>后一根 K 线开盘撮合</span></div><div class="inline-config-actions"><button type="button" id="compile-button" class="secondary">编译</button><button type="submit" id="run-button" class="primary">运行回测</button></div></div>
           <div class="inline-config-grid">
-            <label class="run-name">名称<input id="name" maxlength="100" required></label>
             <label>频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label>
-            <label>分钟标签<select id="minute_label"><option value="end">结束时间</option><option value="start">开始时间</option></select></label>
             <label>开始日期<input id="start" type="date" value="2026-11-02" required></label>
             <label>结束日期<input id="end" type="date" value="2026-11-13" required></label>
             <label>初始资金<input id="initial_cash" type="number" value="1000000" min="1" required></label>
