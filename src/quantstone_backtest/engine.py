@@ -227,7 +227,8 @@ class Engine:
             self.reports()
             snapshot = self.account.snapshot()
             self.curve.append({"date": session.isoformat(), "equity": snapshot["equity"], "net_value": snapshot["net_value"]})
-            self.progress({"completed": index + 1, "total": len(self.sessions), "date": session.isoformat()})
+            self.progress({"completed": index + 1, "total": len(self.sessions), "date": session.isoformat(),
+                           "equity_point": self.curve[-1]})
         self.finishing = True
         self.exchange.expire(self.now)
         self.reports()

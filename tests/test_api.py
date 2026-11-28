@@ -1,3 +1,4 @@
+import json
 import time
 
 import pytest
@@ -36,6 +37,8 @@ def test_api_runs_real_worker_and_persists_snapshot(tmp_path):
         result = wait_job(c, identifier)
         assert result['status'] == 'completed', result
         assert result['result']['metrics']['trade_count'] == 1
+        preview = json.loads((tmp_path / identifier / 'preview.json').read_text())
+        assert preview['equity_curve'][-1]['date'] == '2026-11-13'
         assert (tmp_path / identifier / 'strategy.py').read_text() == EXAMPLE
         assert c.get('/api/runs').json()[0]['id'] == identifier
     with TestClient(create_app(tmp_path, data_source='demo')) as c:

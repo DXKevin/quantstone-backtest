@@ -16,12 +16,12 @@ interface Strategy extends Row {
 interface BacktestResult extends Row {
   metrics: {total_return: string | number; max_drawdown: string | number; trade_count: number; annualized_return?: number; annualized_volatility?: number; sharpe?: number; positive_day_rate?: number; trading_days?: number; max_drawdown_start?: string; max_drawdown_end?: string};
   account: Row & {initial_cash: string; available_cash: string; market_value: string; equity: string; realized_pnl: string; unrealized_pnl: string; total_pnl: string; total_fees: string; net_value: string; positions: Row[]};
-  equity_curve: Array<{date: string; net_value: string}>;
+  equity_curve: Array<{date: string; equity?: string; net_value: string}>;
   orders: Row[]; trades: Row[]; corporate_actions: Row[]; logs: Array<{time: string; message: string}>; data?: {note?: string};
 }
 interface Job extends RunSummary {
   progress?: {stage?: string; completed?: number; total?: number; date?: string};
-  result?: BacktestResult; console?: string; error?: string;
+  result?: BacktestResult; preview?: {equity_curve: BacktestResult["equity_curve"]}; console?: string; error?: string;
 }
 interface ApiErrorDetail {loc: Array<string | number>; msg: string}
 interface ApiErrorResponse {detail?: string | ApiErrorDetail[]}
@@ -212,6 +212,13 @@ function tradeChart(trades: Row[], start: string, end: string) {
   const {make,width,height:canvasHeight}=svgChart("trade-chart","成交记录",120),left=58,right=width-15,axis=canvasHeight/2-5; const startTime=new Date(start).getTime(), endTime=new Date(end).getTime(), notionals=trades.map(item=>Number(item.price)*Number(item.quantity)),maximum=Math.max(...notionals,1),barWidth=Math.max(2,Math.min(8,(right-left)/trades.length*.5)); make("line",{x1:left,y1:axis,x2:right,y2:axis,stroke:"#b7c0cd"}); trades.forEach((item,index)=>{const time=new Date(item.timestamp).getTime(),px=left+(time-startTime)/Math.max(1,endTime-startTime)*(right-left),barHeight=(axis-8)*notionals[index]/maximum,buy=item.side==="buy",bar=make("rect",{x:px-barWidth/2,y:buy?axis-barHeight:axis,width:barWidth,height:barHeight,fill:buy?"#e95a55":"#4d8dd9"});const title=document.createElementNS("http://www.w3.org/2000/svg","title");title.textContent=`${item.timestamp} ${buy?"买入":"卖出"} ${item.symbol} ${fmt(notionals[index])} 元`;bar.append(title)}); make("text",{x:left,y:canvasHeight-5,"font-size":9,fill:"#8592a5"},start);make("text",{x:right,y:canvasHeight-5,"text-anchor":"end","font-size":9,fill:"#8592a5"},end);
 }
 function renderResultCharts(result: BacktestResult) { if (!job) return; chart(result.equity_curve, result.metrics); dailyReturnChart(result.equity_curve); tradeChart(result.trades, job.start, job.end); }
+function calculatePreviewMetrics(rows: BacktestResult["equity_curve"]): BacktestResult["metrics"] {
+  const values=rows.map(row=>Number(row.net_value)), returns=values.slice(1).map((value,index)=>value/values[index]-1), mean=returns.length?returns.reduce((sum,value)=>sum+value,0)/returns.length:0;
+  const volatility=returns.length>1?Math.sqrt(returns.reduce((sum,value)=>sum+(value-mean)**2,0)/returns.length):0; let peak=1, peakDate=rows[0]?.date, drawdown=0, drawdownStart=peakDate, drawdownEnd=peakDate;
+  rows.forEach((row,index)=>{if(values[index]>peak){peak=values[index];peakDate=row.date}const current=(peak-values[index])/peak;if(current>drawdown){drawdown=current;drawdownStart=peakDate;drawdownEnd=row.date}});
+  const periods=Math.max(returns.length,1), total=(values.at(-1)??1)-1;
+  return {total_return:total,annualized_return:(values.at(-1)??1)**(252/periods)-1,annualized_volatility:volatility*Math.sqrt(252),sharpe:volatility?mean/volatility*Math.sqrt(252):0,positive_day_rate:returns.length?returns.filter(value=>value>0).length/returns.length:0,max_drawdown:drawdown,max_drawdown_start:drawdownStart,max_drawdown_end:drawdownEnd,trade_count:0,trading_days:rows.length};
+}
 function table<T extends Row>(container: HTMLElement, columns: TableColumn<T>[], rows: T[]) {
   container.replaceChildren(); if (!rows.length) { container.append(node("p", "hint", "暂无记录")); return; }
   const tableElement = node("table"), head = node("thead"), headerRow = node("tr"); columns.forEach(([title]) => headerRow.append(node("th", "", title))); head.append(headerRow); tableElement.append(head);
@@ -236,10 +243,12 @@ function render() {
   const progress = job.progress || {}; $<HTMLProgressElement>("progress").value = job.status === "completed" ? 1 : Math.min(1, (progress.completed || 0) / (progress.total || 1));
   $("progress-text").textContent = job.status === "running" && progress.total ? `${progress.stage === "loading" ? "加载数据" : "回放交易日"} ${progress.completed}/${progress.total} ${progress.date || ""}` : "";
   $<HTMLButtonElement>("cancel-button").hidden = job.status !== "running"; $<HTMLButtonElement>("export-button").disabled = !job.result;
-  const result = job.result, percent = (value?: string | number) => value === undefined || value === null ? "—" : `${fmt(Number(value) * 100)}%`;
-  $("return-value").textContent = result ? percent(result.metrics.total_return) : "—"; $("annualized-return-value").textContent = result ? percent(result.metrics.annualized_return) : "—"; $("drawdown-value").textContent = result ? percent(result.metrics.max_drawdown) : "—";
-  $("sharpe-value").textContent = result?.metrics.sharpe === undefined ? "—" : fmt(result.metrics.sharpe, 2); $("volatility-value").textContent = result ? percent(result.metrics.annualized_volatility) : "—"; $("positive-day-value").textContent = result ? percent(result.metrics.positive_day_rate) : "—";
-  $("equity-value").textContent = result ? fmt(result.account.equity) : "—"; $("trades-value").textContent = result ? String(result.metrics.trade_count) : "—"; $("result-duration").textContent = result?.metrics.trading_days ? `${result.metrics.trading_days} 个交易日` : "—"; $("result-note").textContent = result?.data?.note || "";
+  const result = job.result, previewRows = job.preview?.equity_curve || [], metrics = result?.metrics || (previewRows.length ? calculatePreviewMetrics(previewRows) : undefined), percent = (value?: string | number) => value === undefined || value === null ? "—" : `${fmt(Number(value) * 100)}%`;
+  ["return-value","annualized-return-value","realized-pnl-value","unrealized-pnl-value"].forEach(id=>$(id).classList.remove("positive","negative"));
+  if (!result) ["initial-cash-value","cash-value","market-value","realized-pnl-value","unrealized-pnl-value","fees-value"].forEach(id=>$(id).textContent="—");
+  $("return-value").textContent = metrics ? percent(metrics.total_return) : "—"; $("annualized-return-value").textContent = metrics ? percent(metrics.annualized_return) : "—"; $("drawdown-value").textContent = metrics ? percent(metrics.max_drawdown) : "—";
+  $("sharpe-value").textContent = metrics?.sharpe === undefined ? "—" : fmt(metrics.sharpe, 2); $("volatility-value").textContent = metrics ? percent(metrics.annualized_volatility) : "—"; $("positive-day-value").textContent = metrics ? percent(metrics.positive_day_rate) : "—";
+  $("equity-value").textContent = result ? fmt(result.account.equity) : previewRows.at(-1)?.equity ? fmt(previewRows.at(-1)!.equity!) : "—"; $("trades-value").textContent = result ? String(result.metrics.trade_count) : "—"; $("result-duration").textContent = metrics?.trading_days ? `${metrics.trading_days} 个交易日` : "—"; $("result-note").textContent = result?.data?.note || (previewRows.length ? "实时预览数据；回测完成后生成正式账户与成交结果。" : "");
   if (result) {
     const account = result.account, tone = (id: string, value: string | number) => $(id).classList.add(Number(value) >= 0 ? "positive" : "negative");
     $("latest-net-value").textContent = `最新 ${fmt(account.net_value, 4)}`; $("chart-summary").textContent = `${result.equity_curve.length} 个交易日 · 起始净值 1.0000`;
@@ -248,7 +257,8 @@ function render() {
     tone("return-value", result.metrics.total_return); if (result.metrics.annualized_return !== undefined) tone("annualized-return-value", result.metrics.annualized_return); tone("realized-pnl-value", account.realized_pnl); tone("unrealized-pnl-value", account.unrealized_pnl);
   }
   if (result) renderResultCharts(result);
-  else { emptyChart(job.status === "running" ? "正在加载数据或回放行情…" : job.error ? "运行失败，请查看日志。" : "没有可展示的结果。"); emptyChart("暂无日收益数据", "daily-return-chart"); emptyChart("暂无成交记录", "trade-chart"); } detail();
+  else if (previewRows.length && metrics) { chart(previewRows,metrics); dailyReturnChart(previewRows); emptyChart("成交记录将在回测完成后显示", "trade-chart"); $("latest-net-value").textContent=`实时 ${fmt(previewRows.at(-1)!.net_value,4)}`; $("chart-summary").textContent=`已回放 ${previewRows.length} / ${progress.total || "—"} 个交易日`; const tone=(id:string,value:string|number)=>$(id).classList.add(Number(value)>=0?"positive":"negative");tone("return-value",metrics.total_return);if(metrics.annualized_return!==undefined)tone("annualized-return-value",metrics.annualized_return); }
+  else { emptyChart(job.status === "running" ? "正在加载数据或等待首个交易日完成…" : job.error ? "运行失败，请查看日志。" : "没有可展示的结果。"); emptyChart("暂无日收益数据", "daily-return-chart"); emptyChart("暂无成交记录", "trade-chart"); } detail();
 }
 async function selectRun(id: string) {
   selected = id; clearTimeout(timer); const current = await api<Job>(`/api/runs/${id}`); if (selected !== id) return; job = current; render();
@@ -310,13 +320,13 @@ function showResultPage(target: string) {
   const overview = target === "overview"; $("result-overview").hidden = !overview; $("result-details").hidden = overview;
   document.querySelectorAll<HTMLButtonElement>("[data-result-target]").forEach(item => item.classList.toggle("active", item.dataset.resultTarget === target));
   if (!overview) { const [title, description] = resultPageCopy[target] || resultPageCopy.trades; $("result-detail-title").textContent = title; $("result-detail-description").textContent = description; setDetailTab(target as DetailTab); }
-  else if (job?.result) requestAnimationFrame(() => renderResultCharts(job!.result!));
+  else if (job) requestAnimationFrame(render);
   scrollTo({top:0,behavior:"auto"});
 }
 document.querySelectorAll<HTMLButtonElement>("[data-result-target]").forEach(button => button.onclick = () => showResultPage(button.dataset.resultTarget || "overview"));
 document.querySelectorAll<HTMLAnchorElement>(".result-sidebar-group a").forEach(anchor => anchor.onclick = event => { event.preventDefault(); showResultPage("overview"); requestAnimationFrame(() => document.querySelector(anchor.hash)?.scrollIntoView({behavior:"smooth",block:"start"})); });
 document.querySelectorAll<HTMLButtonElement>("[data-worktab]").forEach(button => button.onclick = () => setWorktab((button.dataset.worktab || "code") as WorkTab));
 let resultResizeTimer: ReturnType<typeof setTimeout> | undefined;
-window.addEventListener("resize", () => { if (!isStrategyPage || !job?.result || $("result-overview").hidden) return; clearTimeout(resultResizeTimer); resultResizeTimer = setTimeout(() => renderResultCharts(job!.result!), 120); });
+window.addEventListener("resize", () => { if (!isStrategyPage || !job || $("result-overview").hidden) return; clearTimeout(resultResizeTimer); resultResizeTimer = setTimeout(render, 120); });
 
 export {};

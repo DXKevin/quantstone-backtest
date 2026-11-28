@@ -38,6 +38,14 @@ def test_next_daily_open_and_no_future_history():
     assert D(result['account']['total_pnl']) == 100
 
 
+def test_progress_publishes_each_completed_equity_point():
+    updates = []
+    Engine([bar(2), bar(3, close=11)], SimpleNamespace(), fees=FREE, progress=updates.append).run()
+    assert [item['completed'] for item in updates] == [1, 2]
+    assert updates[-1]['equity_point']['date'] == '2026-11-03'
+    assert updates[-1]['equity_point']['net_value'] == D('1')
+
+
 def test_adjacent_minute_close_then_next_open():
     seen = []
     def handle(c, bars):

@@ -127,6 +127,9 @@ class JobManager:
             job["config"] = read_json(path / "config.json")
             if job["status"] == "completed":
                 job["result"] = read_json(path / "result.json")
+            preview = read_json(path / "preview.json")
+            if preview and job["status"] != "completed":
+                job["preview"] = preview
             console = path / "console.log"
             job["console"] = console.read_text(encoding="utf-8", errors="replace")[-16000:] if console.exists() else ""
         return job
