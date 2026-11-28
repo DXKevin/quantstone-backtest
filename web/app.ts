@@ -178,7 +178,7 @@ function resetResult() {
   $("status").className = "status"; $("result-period").textContent = "尚未选择回测区间"; $("result-environment").textContent = "—"; $("chart-summary").textContent = "每日收盘后的账户净值";
   $("demo-warning").hidden = true;
   ["return-value", "annualized-return-value", "drawdown-value", "sharpe-value", "volatility-value", "positive-day-value", "equity-value", "trades-value", "latest-net-value"].forEach(id => { $(id).textContent = "—"; $(id).classList.remove("positive", "negative"); }); $("result-duration").textContent = "—";
-  $<HTMLButtonElement>("cancel-button").hidden = true; $<HTMLButtonElement>("export-button").disabled = true; emptyChart("运行策略后，在这里查看累计收益。", "chart"); emptyChart("暂无日收益数据", "daily-return-chart");
+  $<HTMLButtonElement>("cancel-button").hidden = true; $<HTMLButtonElement>("export-button").disabled = true; emptyChart("运行策略后，在这里查看累计收益。", "chart"); emptyChart("暂无日收益数据", "daily-return-chart"); emptyChart("暂无成交", "trade-chart");
   $("detail-content").replaceChildren(node("p", "hint", "运行回测后查看明细。"));
 }
 function emptyChart(message: string, target = "chart") { const div = node("div", "empty"); div.append(node("strong", "", message)); $(target).replaceChildren(div); }
@@ -212,7 +212,17 @@ function dailyReturnChart(rows: BacktestResult["equity_curve"]) {
   const {make,width,height}=svgChart("daily-return-chart","每日收益",130), left=58,right=width-15,axis=height/2,amplitude=height/2-17,scale=fixedDateScale(left,right),key=job?.id||"empty"; const values=rows.map((row,index)=>index ? Number(row.net_value)/Number(rows[index-1].net_value)-1 : Number(row.net_value)-1),limit=Math.max(dailyReturnLimits.get(key)||.01,...values.map(Math.abs));dailyReturnLimits.set(key,limit);const y=(value:number)=>axis-value/limit*amplitude,dayCount=Math.max(1,Math.round(scale.span/86_400_000)+1),barWidth=Math.max(.8,(right-left)/dayCount*.72);
   make("line",{x1:left,y1:axis,x2:right,y2:axis,stroke:"#aeb8c7"}); values.forEach((value,index)=>{const px=scale.x(rows[index].date),py=y(value);const bar=make("rect",{x:px-barWidth/2,y:Math.min(axis,py),width:barWidth,height:Math.max(1,Math.abs(py-axis)),fill:value>=0?"#e95a55":"#4fbd64"}); const title=document.createElementNS("http://www.w3.org/2000/svg","title");title.textContent=`${rows[index].date} ${fmt(value*100,2)}%`;bar.append(title)}); make("text",{x:left-9,y:12,"text-anchor":"end","font-size":9,fill:"#8592a5"},`${fmt(limit*100,1)}%`);make("text",{x:left-9,y:height-6,"text-anchor":"end","font-size":9,fill:"#8592a5"},`-${fmt(limit*100,1)}%`);
 }
-function renderResultCharts(result: BacktestResult) { chart(result.equity_curve, result.metrics); dailyReturnChart(result.equity_curve); }
+function tradeChart(trades: Row[]) {
+  const {make,width,height}=svgChart("trade-chart","每日成交金额",130),left=58,right=width-15,axis=(height-22)/2,scale=fixedDateScale(left,right);
+  const days=new Map<string,{buy:number;sell:number}>();
+  for (const trade of trades) { const date=String(trade.timestamp).slice(0,10),amount=Number(trade.price)*Number(trade.quantity),day=days.get(date)||{buy:0,sell:0}; if(trade.side==="buy")day.buy+=amount;else day.sell+=amount;days.set(date,day); }
+  const maximum=Math.max(1,...[...days.values()].flatMap(day=>[day.buy,day.sell])),barWidth=Math.max(.8,Math.min(12,(right-left)/configuredCalendarDays()*.65));
+  make("line",{x1:left,y1:axis,x2:right,y2:axis,stroke:"#b7c0cd"});
+  for(const [date,day] of days) for(const side of ["buy","sell"] as const) { if(!day[side])continue;const barHeight=(axis-12)*day[side]/maximum,bar=make("rect",{x:Math.max(left,Math.min(right-barWidth,scale.x(date)-barWidth/2)),y:side==="buy"?axis-barHeight:axis,width:barWidth,height:barHeight,fill:side==="buy"?"#e95a55":"#4d8dd9"});const title=document.createElementNS("http://www.w3.org/2000/svg","title");title.textContent=`${date} ${side==="buy"?"买入":"卖出"} ${fmt(day[side])} 元`;bar.append(title); }
+  make("text",{x:left,y:height-4,"font-size":10,fill:"#8592a5"},job?.start||"");make("text",{x:right,y:height-4,"text-anchor":"end","font-size":10,fill:"#8592a5"},job?.end||"");
+  if(!trades.length)make("text",{x:(left+right)/2,y:axis-12,"text-anchor":"middle","font-size":11,fill:"#8592a5"},job?.status==="completed"?"暂无成交":"等待成交结果");
+}
+function renderResultCharts(result: BacktestResult) { chart(result.equity_curve, result.metrics); dailyReturnChart(result.equity_curve); tradeChart(result.trades); }
 function calculatePreviewMetrics(rows: BacktestResult["equity_curve"]): BacktestResult["metrics"] {
   const values=rows.map(row=>Number(row.net_value)), returns=values.slice(1).map((value,index)=>value/values[index]-1), mean=returns.length?returns.reduce((sum,value)=>sum+value,0)/returns.length:0;
   const volatility=returns.length>1?Math.sqrt(returns.reduce((sum,value)=>sum+(value-mean)**2,0)/returns.length):0; let peak=1, peakDate=rows[0]?.date, drawdown=0, drawdownStart=peakDate, drawdownEnd=peakDate;
@@ -258,8 +268,8 @@ function render() {
     tone("return-value", result.metrics.total_return); if (result.metrics.annualized_return !== undefined) tone("annualized-return-value", result.metrics.annualized_return);
   }
   if (result) renderResultCharts(result);
-  else if (previewRows.length && metrics) { chart(previewRows,metrics); dailyReturnChart(previewRows); $("latest-net-value").textContent=`实时 ${fmt(previewRows.at(-1)!.net_value,4)}`; $("chart-summary").textContent=`已回放 ${previewRows.length} / ${progress.total || "—"} 个交易日`; const tone=(id:string,value:string|number)=>$(id).classList.add(Number(value)>=0?"positive":"negative");tone("return-value",metrics.total_return);if(metrics.annualized_return!==undefined)tone("annualized-return-value",metrics.annualized_return); }
-  else { chart([], undefined); dailyReturnChart([]); } detail();
+  else if (previewRows.length && metrics) { chart(previewRows,metrics); dailyReturnChart(previewRows); tradeChart([]); $("latest-net-value").textContent=`实时 ${fmt(previewRows.at(-1)!.net_value,4)}`; $("chart-summary").textContent=`已回放 ${previewRows.length} / ${progress.total || "—"} 个交易日`; const tone=(id:string,value:string|number)=>$(id).classList.add(Number(value)>=0?"positive":"negative");tone("return-value",metrics.total_return);if(metrics.annualized_return!==undefined)tone("annualized-return-value",metrics.annualized_return); }
+  else { chart([], undefined); dailyReturnChart([]); tradeChart([]); } detail();
 }
 async function selectRun(id: string) {
   selected = id; clearTimeout(timer); const current = await api<Job>(`/api/runs/${id}`); if (selected !== id) return; job = current; render();
