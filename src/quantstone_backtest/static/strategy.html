@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-8"><link rel="stylesheet" href="/research.css?v=20261128-8"><script defer src="/app.js?v=20261128-8"></script><script type="module" src="/editor.js?v=20261128-8"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-9"><link rel="stylesheet" href="/research.css?v=20261128-9"><script defer src="/app.js?v=20261128-9"></script><script type="module" src="/editor.js?v=20261128-9"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
@@ -67,7 +67,6 @@
             <div id="chart" class="chart performance-chart"><div class="empty"><strong>从一次回测开始</strong><p>运行策略后，在这里查看累计收益。</p></div></div>
           </section>
           <section id="daily-return-section" class="wide-chart-section compact-chart-section"><div class="result-section-heading"><div><h3>每日收益</h3><p>红色为上涨，绿色为下跌</p></div></div><div id="daily-return-chart" class="chart secondary-chart"><div class="empty"><strong>暂无每日收益</strong></div></div></section>
-          <section id="trade-timeline-section" class="wide-chart-section compact-chart-section"><div class="result-section-heading"><div><h3>成交记录</h3><p>红色买入，蓝色卖出；高度表示成交金额</p></div></div><div id="trade-chart" class="chart trade-chart"><div class="empty"><strong>暂无成交记录</strong></div></div></section>
           <p id="result-note" class="result-note"></p>
         </section>
         <section id="result-details" class="result-detail-page" hidden><header><div><h2 id="result-detail-title">交易明细</h2><p id="result-detail-description">回测期间的实际成交记录</p></div><span id="result-detail-count">0 条记录</span></header><div id="detail-date-toolbar" class="detail-date-toolbar" hidden><button id="detail-date-previous" class="secondary" type="button">上一日</button><input id="detail-date" type="date" aria-label="查询日期"><button id="detail-date-next" class="secondary" type="button">下一日</button><button id="detail-date-all" class="text-button" type="button">全部日期</button><span id="detail-date-summary"></span></div><div id="detail-content" class="table-container"><p class="hint">运行回测后查看明细。</p></div></section>
