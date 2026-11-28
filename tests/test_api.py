@@ -210,7 +210,11 @@ def test_separate_strategy_page_and_legacy_instrument(tmp_path):
         assert 'class="section-label">Python 策略' not in page.text
         assert 'strategy.py' not in page.text
         assert 'Python · UTF-8' not in page.text
-        assert 'id="config-dialog"' in page.text
+        assert 'id="config-dialog"' not in page.text
+        assert 'class="developer-workspace"' in page.text
+        assert 'class="inline-run-config"' in page.text
+        assert 'id="workspace-chart"' in page.text
+        assert 'id="workspace-log"' in page.text
         assert 'id="leave-dialog"' in page.text
         assert 'id="strategy-editor"' in page.text
         assert 'src="/editor.js?v=' in page.text

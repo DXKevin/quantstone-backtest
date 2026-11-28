@@ -157,6 +157,7 @@ function setWorktab(name: WorkTab) {
   (["code", "results", "history"] as const).forEach(tab => $(`${tab}-pane`).hidden = tab !== name);
   if (name === "results") showResultPage("overview");
   if (name === "history") loadHistory().catch(reason => showError(errorMessage(reason)));
+  if (name === "code" && job) requestAnimationFrame(render);
 }
 async function openStrategy(identifier: string) {
   try {
@@ -179,6 +180,7 @@ function resetResult() {
   $("demo-warning").hidden = true;
   ["return-value", "annualized-return-value", "drawdown-value", "sharpe-value", "volatility-value", "positive-day-value", "equity-value", "trades-value", "latest-net-value"].forEach(id => { $(id).textContent = "—"; $(id).classList.remove("positive", "negative"); }); $("result-duration").textContent = "—";
   $<HTMLButtonElement>("cancel-button").hidden = true; $<HTMLButtonElement>("export-button").disabled = true; emptyChart("运行策略后，在这里查看累计收益。", "chart"); emptyChart("暂无日收益数据", "daily-return-chart"); emptyChart("暂无成交", "trade-chart");
+  emptyChart("暂无回测数据", "workspace-chart"); $("workspace-return").textContent = "—"; $("workspace-chart-caption").textContent = "运行回测后显示"; $("workspace-run-status").textContent = "尚未运行"; $("workspace-log").textContent = "运行回测后显示策略日志和引擎状态。";
   $("detail-content").replaceChildren(node("p", "hint", "运行回测后查看明细。"));
 }
 function emptyChart(message: string, target = "chart") { const div = node("div", "empty"); div.append(node("strong", "", message)); $(target).replaceChildren(div); }
@@ -188,6 +190,13 @@ function svgChart(target: string, label: string, height: number) {
   svg.setAttribute("viewBox", `0 0 ${width} ${canvasHeight}`); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", label);
   const make = (name: string, attrs: Record<string, string | number>, text?: string) => { const item = document.createElementNS(namespace, name); Object.entries(attrs).forEach(([key, value]) => item.setAttribute(key, String(value))); if (text !== undefined) item.textContent = text; svg.append(item); return item; };
   container.replaceChildren(svg); return {svg, make, width, height: canvasHeight};
+}
+function workspaceChart(rows: BacktestResult["equity_curve"]) {
+  if(!rows.length){emptyChart("暂无回测数据","workspace-chart");return}
+  const {svg,make,width,height}=svgChart("workspace-chart","实时收益曲线",240),left=48,right=width-14,top=18,bottom=height-30,scale=fixedDateScale(left,right),strategy=rows.map(row=>Number(row.net_value)-1),benchmark=rows.map(row=>row.benchmark_net_value===undefined?null:Number(row.benchmark_net_value)-1),all=[...strategy,...benchmark.filter((value):value is number=>value!==null)],low=Math.min(0,...all),high=Math.max(0,...all),padding=Math.max((high-low)*.12,.003),minimum=low-padding,maximum=high+padding,y=(value:number)=>bottom-(value-minimum)/(maximum-minimum)*(bottom-top);
+  for(let index=0;index<4;index++){const value=minimum+(maximum-minimum)*index/3;make("line",{x1:left,y1:y(value),x2:right,y2:y(value),stroke:"#e8edf3"});make("text",{x:left-7,y:y(value)+4,"text-anchor":"end","font-size":10,fill:"#8592a5"},`${fmt(value*100,1)}%`)}
+  const draw=(values:Array<number|null>,color:string)=>{let started=false,path="";values.forEach((value,index)=>{if(value===null)return;path+=`${started?" L":"M"} ${scale.x(rows[index].date)} ${y(value)}`;started=true});if(path)make("path",{d:path,fill:"none",stroke:color,"stroke-width":1.8,"stroke-linejoin":"round"})};draw(benchmark,"#7f9fbd");draw(strategy,"#e85c57");
+  const guide=make("line",{x1:left,y1:top,x2:left,y2:bottom,stroke:"#7b8798","stroke-dasharray":"3 3",opacity:0}),overlay=make("rect",{x:left,y:top,width:right-left,height:bottom-top,fill:"transparent"}),tooltip=node("div","chart-tooltip chart-tooltip-detail");$("workspace-chart").append(tooltip);overlay.addEventListener("pointermove",event=>{const index=nearestRowIndex(event,svg,rows,width,left,right,scale),px=scale.x(rows[index].date);guide.setAttribute("x1",String(px));guide.setAttribute("x2",String(px));guide.setAttribute("opacity","1");showChartTooltip(tooltip,px,y(strategy[index]),width,height,`<strong>${rows[index].date}</strong><span><i class="strategy-dot"></i>策略收益：${fmt(strategy[index]*100,2)}%</span><span><i class="benchmark-dot"></i>基准收益：${benchmark[index]===null?"—":fmt(benchmark[index]!*100,2)+"%"}</span>`)});overlay.addEventListener("pointerleave",()=>{guide.setAttribute("opacity","0");tooltip.classList.remove("visible")});
 }
 function fixedDateScale(left: number, right: number) {
   const start = Date.parse(`${job?.start || new Date().toISOString().slice(0, 10)}T00:00:00Z`), end = Date.parse(`${job?.end || job?.start || new Date().toISOString().slice(0, 10)}T00:00:00Z`), span = Math.max(86_400_000, end - start);
@@ -268,6 +277,12 @@ function detail() {
   const trades=(result?.trades||[]).filter(row=>{const date=String(row.timestamp).slice(0,10);return(!tradeDateStart||date>=tradeDateStart)&&(!tradeDateEnd||date<=tradeDateEnd)});$("result-detail-count").textContent=`${trades.length} 笔成交`;$("detail-date-summary").textContent=tradeDateStart||tradeDateEnd?`${tradeDateStart||job?.start} 至 ${tradeDateEnd||job?.end}`:"全部日期";
   table(target,[["日期",row=>String(row.timestamp).slice(0,10)],["时间",row=>new Date(row.timestamp).toLocaleTimeString("zh-CN",{hour12:false})],["代码",row=>row.symbol],["操作",row=>row.side==="buy"?"买入":"卖出"],["成交价",row=>fmt(row.price,3)],["成交数量",row=>row.side==="sell"?`-${row.quantity}`:row.quantity],["成交金额",row=>fmt(Number(row.price)*Number(row.quantity))],["费用",row=>fmt(Object.values(row.fees as Record<string,string>).reduce((sum,value)=>sum+Number(value),0))],["平仓盈亏",row=>row.side==="sell"&&row.realized_pnl!==undefined?fmt(row.realized_pnl):"—"]],trades);
 }
+function renderWorkspace() {
+  if(!job)return;const rows=job.result?.equity_curve||job.preview?.equity_curve||[],latest=rows.at(-1),progress=job.progress||{};
+  workspaceChart(rows);$("workspace-run-status").textContent=states[job.status]||job.status;$("workspace-chart-caption").textContent=`${job.start} — ${job.end}${job.result?.benchmark?.symbol?` · ${job.result.benchmark.symbol}`:""}`;
+  const totalReturn=latest?Number(latest.net_value)-1:null;$("workspace-return").textContent=totalReturn===null?"—":`${totalReturn>=0?"+":""}${fmt(totalReturn*100,2)}%`;$("workspace-return").className=totalReturn===null?"":totalReturn>=0?"positive":"negative";
+  const lines=[...(job.result?.logs||[]).map(entry=>`${entry.time}  ${entry.message}`)];if(job.status==="running")lines.push(`[引擎] ${progress.stage==="loading"?"加载数据":"回放交易日"} ${progress.completed||0}/${progress.total||"—"} ${progress.date||""}`);if(job.console?.trim())lines.push(job.console.trim());if(job.error?.trim())lines.push(job.error.trim());$("workspace-log").textContent=lines.filter(Boolean).join("\n")||"暂无日志输出。";
+}
 function render() {
   if (!job) return; $("status").textContent = states[job.status] || job.status; $("status").className = `status ${job.status}`; $("result-name").textContent = job.name;
   $("result-period").textContent = `${job.start} — ${job.end}`; $("result-environment").textContent = `${job.frequency === "1m" ? "1 分钟" : "日线"} · ${job.source === "demo" ? "合成测试行情（非真实）" : "真实行情"}`; $("demo-warning").hidden = job.source !== "demo";
@@ -286,7 +301,7 @@ function render() {
   }
   if (result) renderResultCharts(result);
   else if (previewRows.length && metrics) { chart(previewRows,metrics); dailyReturnChart(previewRows); tradeChart([]); $("latest-net-value").textContent=`实时 ${fmt(previewRows.at(-1)!.net_value,4)}`; $("chart-summary").textContent=`已回放 ${previewRows.length} / ${progress.total || "—"} 个交易日`; const tone=(id:string,value:string|number)=>$(id).classList.add(Number(value)>=0?"positive":"negative");tone("return-value",metrics.total_return);if(metrics.annualized_return!==undefined)tone("annualized-return-value",metrics.annualized_return); }
-  else { chart([], undefined); dailyReturnChart([]); tradeChart([]); } detail();
+  else { chart([], undefined); dailyReturnChart([]); tradeChart([]); } detail(); renderWorkspace();
 }
 async function selectRun(id: string) {
   selected = id; clearTimeout(timer); const current = await api<Job>(`/api/runs/${id}`); if (selected !== id) return; job = current; render();
@@ -301,16 +316,12 @@ async function loadHistory() {
 
 if (isStrategyPage) {
   $<HTMLFormElement>("run-form").onsubmit = async event => {
-    event.preventDefault(); showError(""); $<HTMLButtonElement>("run-button").disabled = true; $<HTMLButtonElement>("run-button-top").disabled = true;
+    event.preventDefault(); showError(""); $<HTMLButtonElement>("run-button").disabled = true;
     try { if (dirty) await saveStrategy(); if (!currentStrategy) throw new Error("策略尚未载入");
       const config: Row = Object.fromEntries(fields.map(key => [key, formValue(key)])); Object.assign(config, {strategy_id: currentStrategy.id, instrument_type: currentStrategy.instrument_type, market: currentStrategy.market, strategy: getStrategyCode()});
-      const created = await api<RunSummary>("/api/runs", {method: "POST", body: JSON.stringify(config)}); $<HTMLDialogElement>("config-dialog").close(); setWorktab("results"); await selectRun(created.id);
-    } catch (reason) { showError(errorMessage(reason)); } finally { $<HTMLButtonElement>("run-button").disabled = false; $<HTMLButtonElement>("run-button-top").disabled = false; }
+      const created = await api<RunSummary>("/api/runs", {method: "POST", body: JSON.stringify(config)}); setWorktab("code"); await selectRun(created.id);
+    } catch (reason) { showError(errorMessage(reason)); } finally { $<HTMLButtonElement>("run-button").disabled = false; }
   };
-  $<HTMLButtonElement>("run-button-top").onclick = () => $<HTMLFormElement>("run-form").requestSubmit();
-  $<HTMLButtonElement>("config-button").onclick = () => { $<HTMLDialogElement>("config-dialog").showModal(); setTimeout(() => $<HTMLInputElement>("name").focus(), 0); };
-  $<HTMLButtonElement>("config-close").onclick = () => $<HTMLDialogElement>("config-dialog").close();
-  $<HTMLDialogElement>("config-dialog").onclick = event => { if (event.target === $("config-dialog")) $<HTMLDialogElement>("config-dialog").close(); };
   $<HTMLButtonElement>("save-strategy-button").onclick = () => { saveStrategy().catch(reason => showError(errorMessage(reason))); };
   $<HTMLButtonElement>("cancel-button").onclick = async () => { try { if (!selected) return; await api(`/api/runs/${selected}/cancel`, {method: "POST"}); await selectRun(selected); } catch (reason) { showError(errorMessage(reason)); } };
   $<HTMLButtonElement>("export-button").onclick = () => { if (!job?.result) return; const anchor = node("a"); anchor.href = URL.createObjectURL(new Blob([JSON.stringify(job, null, 2)], {type: "application/json"})); anchor.download = `quantstone-${job.id}.json`; anchor.click(); setTimeout(() => URL.revokeObjectURL(anchor.href), 1000); };

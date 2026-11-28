@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-12"><link rel="stylesheet" href="/research.css?v=20261128-12"><script defer src="/app.js?v=20261128-12"></script><script type="module" src="/editor.js?v=20261128-12"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-13"><link rel="stylesheet" href="/research.css?v=20261128-13"><script defer src="/app.js?v=20261128-13"></script><script type="module" src="/editor.js?v=20261128-13"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
@@ -11,31 +11,37 @@
   <nav class="strategy-breadcrumb" aria-label="页面路径"><a id="back-button" href="/">策略列表</a></nav>
   <div class="workbench-heading">
     <div class="workbench-title"><div><h1 id="strategy-title">策略</h1></div><p id="strategy-description"></p><div id="strategy-instrument" class="instrument-badge"></div></div>
-    <div class="workbench-actions"><span id="save-state" hidden></span><button id="save-strategy-button" class="secondary">保存</button><button id="config-button" class="secondary">回测配置</button><button id="run-button-top" class="primary">运行回测</button></div>
+    <div class="workbench-actions"><span id="save-state" hidden></span><button id="save-strategy-button" class="secondary">保存</button></div>
   </div>
   <div class="workbench-tabs"><button class="active" data-worktab="code">策略代码</button><button data-worktab="results">回测结果</button><button data-worktab="history">历史记录</button></div>
   <section id="code-pane" class="work-pane">
-    <div class="workspace">
+    <div class="developer-workspace">
       <section class="strategy-panel panel">
         <label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" hidden></textarea><div id="strategy-editor" aria-label="Python 策略代码编辑器"></div>
       </section>
+      <aside class="workspace-runtime">
+        <form id="run-form" class="inline-run-config">
+          <div class="inline-config-heading"><div><h2>回测配置</h2><span>后一根 K 线开盘撮合</span></div><button type="submit" id="run-button" class="primary">运行回测</button></div>
+          <div class="inline-config-grid">
+            <label class="run-name">名称<input id="name" maxlength="100" required></label>
+            <label>频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label>
+            <label>分钟标签<select id="minute_label"><option value="end">结束时间</option><option value="start">开始时间</option></select></label>
+            <label>开始日期<input id="start" type="date" value="2026-11-02" required></label>
+            <label>结束日期<input id="end" type="date" value="2026-11-13" required></label>
+            <label>初始资金<input id="initial_cash" type="number" value="1000000" min="1" required></label>
+          </div>
+        </form>
+        <section class="workspace-chart-panel">
+          <header><div><h2>收益曲线</h2><span id="workspace-chart-caption">运行回测后显示</span></div><strong id="workspace-return">—</strong></header>
+          <div id="workspace-chart" class="workspace-chart"><div class="empty"><strong>暂无回测数据</strong></div></div>
+        </section>
+        <section class="workspace-log-panel">
+          <header><h2>输出日志</h2><span id="workspace-run-status">尚未运行</span></header>
+          <pre id="workspace-log">运行回测后显示策略日志和引擎状态。</pre>
+        </section>
+      </aside>
     </div>
   </section>
-  <dialog id="config-dialog" class="config-dialog">
-      <section class="config-panel">
-        <div class="drawer-heading"><div><h2>回测配置</h2><p>后一根 K 线开盘撮合</p></div><button id="config-close" class="icon-button" type="button" aria-label="关闭回测配置">×</button></div>
-        <form id="run-form"><div class="form-grid">
-          <label class="wide">回测名称<input id="name" maxlength="100" required></label>
-          <label>运行频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label>
-          <label class="wide">分钟数据时间标签<select id="minute_label"><option value="end">结束时间</option><option value="start">开始时间</option></select></label>
-          <label>开始日期<input id="start" type="date" value="2026-11-02" required></label>
-          <label>结束日期<input id="end" type="date" value="2026-11-13" required></label>
-          <label>初始资金 / 元<input id="initial_cash" type="number" value="1000000" min="1" required></label>
-        </div>
-        <p class="hint">交易对象由策略决定；费用可在 init 中通过 ctx.set_fees(...) 设置。</p>
-        <div class="run-actions"><button type="submit" id="run-button" class="primary">运行回测</button></div></form>
-      </section>
-  </dialog>
   <dialog id="leave-dialog" class="confirm-dialog" aria-labelledby="leave-title">
     <div class="confirm-content"><h2 id="leave-title">放弃未保存的修改？</h2><p>当前策略代码尚未保存，返回策略列表后本次修改将丢失。</p><div class="dialog-actions"><button id="leave-cancel" class="secondary" type="button">继续编辑</button><button id="leave-confirm" class="danger-button" type="button">放弃修改</button></div></div>
   </dialog>
