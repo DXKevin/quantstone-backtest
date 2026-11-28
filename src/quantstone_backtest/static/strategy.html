@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-15"><link rel="stylesheet" href="/research.css?v=20261128-15"><script defer src="/app.js?v=20261128-15"></script><script type="module" src="/editor.js?v=20261128-15"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-16"><link rel="stylesheet" href="/research.css?v=20261128-16"><script defer src="/app.js?v=20261128-16"></script><script type="module" src="/editor.js?v=20261128-16"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
@@ -19,11 +19,12 @@
   <section id="code-pane" class="work-pane">
     <div class="developer-workspace">
       <section class="strategy-panel panel">
+        <div class="editor-action-bar"><button type="button" id="compile-button">编译</button></div>
         <label class="sr-only" for="strategy">Python 策略代码</label><textarea id="strategy" hidden></textarea><div id="strategy-editor" aria-label="Python 策略代码编辑器"></div>
       </section>
       <aside class="workspace-runtime">
         <form id="run-form" class="inline-run-config">
-          <div class="inline-config-heading"><div><h2>回测配置</h2><span>后一根 K 线开盘撮合</span></div><div class="inline-config-actions"><button type="button" id="compile-button" class="secondary">编译</button><button type="submit" id="run-button" class="primary">运行回测</button></div></div>
+          <div class="inline-config-heading"><div><h2>回测配置</h2><span>后一根 K 线开盘撮合</span></div><button type="submit" id="run-button" class="primary">运行回测</button></div>
           <div class="inline-config-grid">
             <label>频率<select id="frequency"><option value="1d">日线</option><option value="1m">1 分钟</option></select></label>
             <label>开始日期<input id="start" type="date" value="2026-11-02" required></label>
