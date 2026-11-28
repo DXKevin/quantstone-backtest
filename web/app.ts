@@ -262,7 +262,9 @@ function render() {
 }
 async function selectRun(id: string) {
   selected = id; clearTimeout(timer); const current = await api<Job>(`/api/runs/${id}`); if (selected !== id) return; job = current; render();
-  if (job.status === "running") timer = setTimeout(() => selectRun(id).catch(reason => showError(errorMessage(reason))), 700); else { await loadStrategies(); await loadHistory(); }
+  if (job.status === "running") {
+    timer = setTimeout(() => selectRun(id).catch(reason => showError(errorMessage(reason))), 30);
+  } else { await loadStrategies(); await loadHistory(); }
 }
 async function loadHistory() {
   if (!currentStrategy) return; const rows = (await api<RunSummary[]>("/api/runs")).filter(item => item.strategy_id === currentStrategy!.id);

@@ -43,7 +43,7 @@ def run(directory: Path):
             preview_curve.append(point)
         write_json(directory / "progress.json", value)
         current = time.monotonic()
-        if point and (current - last_preview_write >= .25 or value.get("completed") == value.get("total")):
+        if point and (current - last_preview_write >= .02 or value.get("completed") == value.get("total")):
             write_json(directory / "preview.json", {"equity_curve": preview_curve})
             last_preview_write = current
     progress({"stage": "loading", "completed": 0, "total": 1})

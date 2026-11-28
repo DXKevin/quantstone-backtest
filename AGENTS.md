@@ -33,7 +33,7 @@
 - Web 源码为 `web/app.ts` 和 `web/editor.ts`，通过严格类型检查后分别打包为浏览器使用的 `static/app.js` 与 `static/editor.js`。编辑器基于项目内打包的 CodeMirror 6，不依赖 CDN；提供行号、Python 高亮、括号匹配、折叠、搜索替换、缩进、策略接口补全，以及 Mod+S 保存、Mod+Enter 运行。修改后运行 `npm run typecheck && npm run build:web` 并提交生成文件。
 - 品种使用 `instrument_type`，市场使用 `market`，进入策略档案、任务与结果快照；首版仅接受 `stock` + `A股`，其他组合返回校验错误。旧档案和旧任务缺少字段时按原有 A 股股票语义读取。未来新增品种须接入对应账户、撮合和数据规则，不能只增加前端选项。
 - 数据来源由服务端 `QUANTSTONE_DATA_SOURCE=sdk|demo` 决定，默认使用 sdk 真实行情；demo 只能显式启用。前端只显示当前环境，不提供切换。API 会覆盖客户端旧 source 字段，保证部署配置生效；数据服务不可用时明确失败，不能自动回退。旧 demo 任务快照仍可查看，但结果页会显示醒目的非真实行情警告。
-- 任务：一个 API 进程、最多两个独立回测进程；默认 600 秒超时。引擎每完成一个交易日发布净值点，worker 将完整增量曲线节流至最多每 250ms 写入 `preview.json`；运行中任务由 API 返回 preview，前端随 700ms 任务轮询更新指标和图表。账户、成交、费用等正式数据仍只读取完成后的 `result.json`。策略档案存于忽略的 `var/strategies/`，任务参数、策略快照与结果存于 `var/runs/`。
+- 任务：一个 API 进程、最多两个独立回测进程；默认 600 秒超时。引擎每完成一个交易日发布净值点，worker 将完整增量曲线节流至最多每 20ms 写入 `preview.json`；任务处于运行状态时前端每 30ms 拉取一次并更新进度、指标和图表，确保数据加载切换到计算阶段时不会漏掉短暂的中间曲线。账户、成交、费用等正式数据仍只读取完成后的 `result.json`。策略档案存于忽略的 `var/strategies/`，任务参数、策略快照与结果存于 `var/runs/`。
 - CI 已配置 GitHub Actions，Python 3.11/3.13；远端运行状态以 Actions 实际结果为准，不因存在配置就视为通过。
 
 ## 代码与设计入口
