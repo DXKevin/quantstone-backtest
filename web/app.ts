@@ -177,14 +177,14 @@ function resetResult() {
   $("status").textContent = "尚未开始"; $("result-name").textContent = "等待运行"; $<HTMLProgressElement>("progress").value = 0; $("progress-text").textContent = "";
   $("status").className = "status"; $("result-period").textContent = "尚未选择回测区间"; $("result-environment").textContent = "—"; $("chart-summary").textContent = "每日收盘后的账户净值";
   $("demo-warning").hidden = true;
-  ["return-value", "annualized-return-value", "drawdown-value", "sharpe-value", "volatility-value", "positive-day-value", "equity-value", "trades-value", "latest-net-value"].forEach(id => { $(id).textContent = "—"; $(id).classList.remove("positive", "negative"); }); $("result-duration").textContent = "—"; $("result-note").textContent = "";
+  ["return-value", "annualized-return-value", "drawdown-value", "sharpe-value", "volatility-value", "positive-day-value", "equity-value", "trades-value", "latest-net-value"].forEach(id => { $(id).textContent = "—"; $(id).classList.remove("positive", "negative"); }); $("result-duration").textContent = "—";
   $<HTMLButtonElement>("cancel-button").hidden = true; $<HTMLButtonElement>("export-button").disabled = true; emptyChart("运行策略后，在这里查看累计收益。", "chart"); emptyChart("暂无日收益数据", "daily-return-chart");
   $("detail-content").replaceChildren(node("p", "hint", "运行回测后查看明细。"));
 }
 function emptyChart(message: string, target = "chart") { const div = node("div", "empty"); div.append(node("strong", "", message)); $(target).replaceChildren(div); }
 
 function svgChart(target: string, label: string, height: number) {
-  const namespace = "http://www.w3.org/2000/svg", container = $(target), svg = document.createElementNS(namespace, "svg"), width = Math.max(680, container.clientWidth || 1000), canvasHeight = Math.max(height, container.clientHeight || height);
+  const namespace = "http://www.w3.org/2000/svg", container = $(target), svg = document.createElementNS(namespace, "svg"), width = container.clientWidth || 1000, canvasHeight = container.clientHeight || height;
   svg.setAttribute("viewBox", `0 0 ${width} ${canvasHeight}`); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", label);
   const make = (name: string, attrs: Record<string, string | number>, text?: string) => { const item = document.createElementNS(namespace, name); Object.entries(attrs).forEach(([key, value]) => item.setAttribute(key, String(value))); if (text !== undefined) item.textContent = text; svg.append(item); return item; };
   container.replaceChildren(svg); return {svg, make, width, height: canvasHeight};
@@ -195,7 +195,6 @@ function fixedDateScale(left: number, right: number) {
 }
 function configuredCalendarDays() { return job ? Math.max(1, Math.round((Date.parse(job.end)-Date.parse(job.start))/86_400_000)+1) : 1; }
 function chart(rows: BacktestResult["equity_curve"], metrics?: BacktestResult["metrics"]) {
-  $("chart").style.height=configuredCalendarDays()<=31?"260px":"";
   const {svg, make, width, height} = svgChart("chart", "策略累计收益曲线", 330), left = 58, right = width - 15, top = 20, bottom = height - 38, scale = fixedDateScale(left, right);
   const values = rows.map(row => Number(row.net_value) - 1), key = job?.id || "empty", range = chartRanges.get(key) || {low: -.05, high: .05};
   if (values.length) { const observedLow = Math.min(0, ...values), observedHigh = Math.max(0, ...values), padding = Math.max((observedHigh - observedLow) * .12, .002); range.low = Math.min(range.low, observedLow - padding); range.high = Math.max(range.high, observedHigh + padding); chartRanges.set(key, range); }
@@ -210,7 +209,6 @@ function chart(rows: BacktestResult["equity_curve"], metrics?: BacktestResult["m
   overlay.addEventListener("pointermove",event=>{const bounds=svg.getBoundingClientRect(),stamp=scale.start+Math.max(0,Math.min(1,((event.clientX-bounds.left)/bounds.width*width-left)/(right-left)))*scale.span;let index=0,best=Infinity;rows.forEach((row,rowIndex)=>{const distance=Math.abs(Date.parse(`${row.date}T00:00:00Z`)-stamp);if(distance<best){best=distance;index=rowIndex}});const px=scale.x(rows[index].date),py=y(values[index]);guide.setAttribute("x1",String(px));guide.setAttribute("x2",String(px));guide.setAttribute("opacity","1");marker.setAttribute("cx",String(px));marker.setAttribute("cy",String(py));marker.setAttribute("opacity","1");tooltip.textContent=`${rows[index].date}　累计收益 ${fmt(values[index]*100,2)}%`;tooltip.style.left=`${px/width*100}%`;tooltip.style.top=`${py/height*100}%`;tooltip.classList.add("visible")}); overlay.addEventListener("pointerleave",()=>{guide.setAttribute("opacity","0");marker.setAttribute("opacity","0");tooltip.classList.remove("visible")});
 }
 function dailyReturnChart(rows: BacktestResult["equity_curve"]) {
-  $("daily-return-chart").style.height=configuredCalendarDays()<=31?"100px":"";
   const {make,width,height}=svgChart("daily-return-chart","每日收益",130), left=58,right=width-15,axis=height/2,amplitude=height/2-17,scale=fixedDateScale(left,right),key=job?.id||"empty"; const values=rows.map((row,index)=>index ? Number(row.net_value)/Number(rows[index-1].net_value)-1 : Number(row.net_value)-1),limit=Math.max(dailyReturnLimits.get(key)||.01,...values.map(Math.abs));dailyReturnLimits.set(key,limit);const y=(value:number)=>axis-value/limit*amplitude,dayCount=Math.max(1,Math.round(scale.span/86_400_000)+1),barWidth=Math.max(.8,(right-left)/dayCount*.72);
   make("line",{x1:left,y1:axis,x2:right,y2:axis,stroke:"#aeb8c7"}); values.forEach((value,index)=>{const px=scale.x(rows[index].date),py=y(value);const bar=make("rect",{x:px-barWidth/2,y:Math.min(axis,py),width:barWidth,height:Math.max(1,Math.abs(py-axis)),fill:value>=0?"#e95a55":"#4fbd64"}); const title=document.createElementNS("http://www.w3.org/2000/svg","title");title.textContent=`${rows[index].date} ${fmt(value*100,2)}%`;bar.append(title)}); make("text",{x:left-9,y:12,"text-anchor":"end","font-size":9,fill:"#8592a5"},`${fmt(limit*100,1)}%`);make("text",{x:left-9,y:height-6,"text-anchor":"end","font-size":9,fill:"#8592a5"},`-${fmt(limit*100,1)}%`);
 }
@@ -253,7 +251,7 @@ function render() {
   ["return-value","annualized-return-value"].forEach(id=>$(id).classList.remove("positive","negative"));
   $("return-value").textContent = metrics ? percent(metrics.total_return) : "—"; $("annualized-return-value").textContent = metrics ? percent(metrics.annualized_return) : "—"; $("drawdown-value").textContent = metrics ? percent(metrics.max_drawdown) : "—";
   $("sharpe-value").textContent = metrics?.sharpe === undefined ? "—" : fmt(metrics.sharpe, 2); $("volatility-value").textContent = metrics ? percent(metrics.annualized_volatility) : "—"; $("positive-day-value").textContent = metrics ? percent(metrics.positive_day_rate) : "—";
-  $("equity-value").textContent = result ? fmt(result.account.equity) : previewRows.at(-1)?.equity ? fmt(previewRows.at(-1)!.equity!) : "—"; $("trades-value").textContent = result ? String(result.metrics.trade_count) : "—"; $("result-duration").textContent = metrics?.trading_days ? `${metrics.trading_days} 个交易日` : "—"; $("result-note").textContent = result?.data?.note || (previewRows.length ? "实时预览数据；回测完成后生成正式账户与成交结果。" : "");
+  $("equity-value").textContent = result ? fmt(result.account.equity) : previewRows.at(-1)?.equity ? fmt(previewRows.at(-1)!.equity!) : "—"; $("trades-value").textContent = result ? String(result.metrics.trade_count) : "—"; $("result-duration").textContent = metrics?.trading_days ? `${metrics.trading_days} 个交易日` : "—";
   if (result) {
     const account = result.account, tone = (id: string, value: string | number) => $(id).classList.add(Number(value) >= 0 ? "positive" : "negative");
     $("latest-net-value").textContent = `最新 ${fmt(account.net_value, 4)}`; $("chart-summary").textContent = `${result.equity_curve.length} 个交易日 · 起始净值 1.0000`;
