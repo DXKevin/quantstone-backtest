@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-2"><link rel="stylesheet" href="/research.css?v=20261128-2"><script defer src="/app.js?v=20261128-2"></script><script type="module" src="/editor.js?v=20261128-2"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-3"><link rel="stylesheet" href="/research.css?v=20261128-3"><script defer src="/app.js?v=20261128-3"></script><script type="module" src="/editor.js?v=20261128-3"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
@@ -73,7 +73,7 @@
           <section id="account-section" class="account-summary"><div class="result-section-heading"><div><h3>账户摘要</h3><p>期末账户快照</p></div></div><dl><div><dt>初始资金</dt><dd id="initial-cash-value">—</dd></div><div><dt>可用资金</dt><dd id="cash-value">—</dd></div><div><dt>持仓市值</dt><dd id="market-value">—</dd></div><div><dt>已实现盈亏</dt><dd id="realized-pnl-value">—</dd></div><div><dt>未实现盈亏</dt><dd id="unrealized-pnl-value">—</dd></div><div><dt>累计费用</dt><dd id="fees-value">—</dd></div></dl></section>
           <p id="result-note" class="result-note"></p>
         </section>
-        <section id="result-details" class="panel details-panel"><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-tab="positions">持仓</button><button role="tab" aria-selected="false" data-tab="orders">订单</button><button role="tab" aria-selected="false" data-tab="trades">成交</button><button role="tab" aria-selected="false" data-tab="actions">公司行动</button><button role="tab" aria-selected="false" data-tab="logs">日志与错误</button></div><div id="detail-content" class="table-container" role="tabpanel"><p class="hint">运行回测后查看明细。</p></div></section>
+        <section id="result-details" class="result-detail-page" hidden><header><div><h2 id="result-detail-title">交易明细</h2><p id="result-detail-description">回测期间的实际成交记录</p></div><span id="result-detail-count">0 条记录</span></header><div id="detail-content" class="table-container"><p class="hint">运行回测后查看明细。</p></div></section>
       </div>
     </div>
   </section>

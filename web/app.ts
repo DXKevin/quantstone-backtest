@@ -154,6 +154,7 @@ function setWorktab(name: WorkTab) {
   document.body.classList.toggle("result-mode", name === "results");
   document.querySelectorAll<HTMLButtonElement>("[data-worktab]").forEach(button => button.classList.toggle("active", button.dataset.worktab === name));
   (["code", "results", "history"] as const).forEach(tab => $(`${tab}-pane`).hidden = tab !== name);
+  if (name === "results") showResultPage("overview");
   if (name === "history") loadHistory().catch(reason => showError(errorMessage(reason)));
 }
 async function openStrategy(identifier: string) {
@@ -219,6 +220,8 @@ function table<T extends Row>(container: HTMLElement, columns: TableColumn<T>[],
 }
 function detail() {
   const target = $("detail-content"), result = job?.result;
+  const counts: Record<DetailTab, number> = {positions: result?.account.positions.length || 0, orders: result?.orders.length || 0, trades: result?.trades.length || 0, actions: result?.corporate_actions.length || 0, logs: (result?.logs.length || 0) + (job?.console ? 1 : 0) + (job?.error ? 1 : 0)};
+  $("result-detail-count").textContent = `${counts[activeTab]} 条记录`;
   if (activeTab === "logs") { const pre = node("pre"); pre.textContent = [...(result?.logs || []).map(entry => `${entry.time}  ${entry.message}`), job?.console || "", job?.error || ""].filter(Boolean).join("\n") || "暂无日志"; target.replaceChildren(pre); return; }
   const orderState: Record<string, string> = {accepted: "待成交", filled: "已成交", rejected: "已拒绝", cancelled: "已撤销", expired: "已到期"};
   if (activeTab === "positions") table(target, [["股票", row => row.symbol], ["持仓", row => row.quantity], ["可卖", row => row.sellable], ["成本价", row => fmt(row.average_cost, 4)], ["市值", row => fmt(row.market_value)], ["浮动盈亏", row => fmt(row.unrealized_pnl)]], result?.account.positions || []);
@@ -301,10 +304,15 @@ if (!isStrategyPage) {
 void (async () => { try { if (isStrategyPage) await openStrategy(location.pathname.split("/").pop() || ""); else { exampleCode = (await api<{strategy: string}>("/api/example")).strategy; await loadStrategies(); } } catch (reason) { showError(errorMessage(reason)); } })();
 function setDetailTab(tab: DetailTab) { activeTab = tab; document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(item => item.setAttribute("aria-selected", String(item.dataset.tab === tab))); detail(); }
 document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(button => button.onclick = () => setDetailTab((button.dataset.tab || "positions") as DetailTab));
-document.querySelectorAll<HTMLButtonElement>("[data-result-target]").forEach(button => button.onclick = () => {
-  document.querySelectorAll<HTMLButtonElement>("[data-result-target]").forEach(item => item.classList.toggle("active", item === button)); const target = button.dataset.resultTarget || "overview";
-  if (["trades", "positions", "actions", "logs"].includes(target)) { setDetailTab(target as DetailTab); $("result-details").scrollIntoView({behavior:"smooth",block:"start"}); } else $("result-overview").scrollIntoView({behavior:"smooth",block:"start"});
-});
+const resultPageCopy: Record<string, [string, string]> = {trades:["交易明细","回测期间由撮合引擎产生的实际成交记录"],positions:["期末持仓","回测结束时账户保留的证券持仓"],actions:["公司行动","分红再投资产生的持股数量调整"],logs:["输出日志","策略日志、标准输出及运行错误"]};
+function showResultPage(target: string) {
+  const overview = target === "overview"; $("result-overview").hidden = !overview; $("result-details").hidden = overview;
+  document.querySelectorAll<HTMLButtonElement>("[data-result-target]").forEach(item => item.classList.toggle("active", item.dataset.resultTarget === target));
+  if (!overview) { const [title, description] = resultPageCopy[target] || resultPageCopy.trades; $("result-detail-title").textContent = title; $("result-detail-description").textContent = description; setDetailTab(target as DetailTab); }
+  scrollTo({top:0,behavior:"auto"});
+}
+document.querySelectorAll<HTMLButtonElement>("[data-result-target]").forEach(button => button.onclick = () => showResultPage(button.dataset.resultTarget || "overview"));
+document.querySelectorAll<HTMLAnchorElement>(".result-sidebar-group a").forEach(anchor => anchor.onclick = event => { event.preventDefault(); showResultPage("overview"); requestAnimationFrame(() => document.querySelector(anchor.hash)?.scrollIntoView({behavior:"smooth",block:"start"})); });
 document.querySelectorAll<HTMLButtonElement>("[data-worktab]").forEach(button => button.onclick = () => setWorktab((button.dataset.worktab || "code") as WorkTab));
 
 export {};
