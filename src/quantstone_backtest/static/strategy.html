@@ -2,16 +2,18 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-13"><link rel="stylesheet" href="/research.css?v=20261128-13"><script defer src="/app.js?v=20261128-13"></script><script type="module" src="/editor.js?v=20261128-13"></script>
+  <title>QuantStone · 策略</title><link rel="stylesheet" href="/styles.css?v=20261128-14"><link rel="stylesheet" href="/research.css?v=20261128-14"><script defer src="/app.js?v=20261128-14"></script><script type="module" src="/editor.js?v=20261128-14"></script>
 </head>
 <body class="strategy-page">
 <header class="topbar"><a class="brand" href="/" id="brand-home"><span class="brand-mark">QS</span><span>QuantStone<small>BACKTEST</small></span></a></header>
 <main><div id="notice" role="alert" hidden></div>
 <section id="workbench-view" class="view">
-  <nav class="strategy-breadcrumb" aria-label="页面路径"><a id="back-button" href="/">策略列表</a></nav>
-  <div class="workbench-heading">
-    <div class="workbench-title"><div><h1 id="strategy-title">策略</h1></div><p id="strategy-description"></p><div id="strategy-instrument" class="instrument-badge"></div></div>
-    <div class="workbench-actions"><span id="save-state" hidden></span><button id="save-strategy-button" class="secondary">保存</button></div>
+  <div class="strategy-context-bar">
+    <nav class="strategy-breadcrumb" aria-label="页面路径"><a id="back-button" href="/">‹ 策略列表</a></nav>
+    <div class="workbench-heading">
+      <div class="workbench-title"><div><h1 id="strategy-title">策略</h1><div id="strategy-instrument" class="instrument-badge"></div></div><p id="strategy-description"></p></div>
+      <div class="workbench-actions"><span id="save-state" hidden></span><button id="save-strategy-button" class="secondary">保存</button></div>
+    </div>
   </div>
   <div class="workbench-tabs"><button class="active" data-worktab="code">策略代码</button><button data-worktab="results">回测结果</button><button data-worktab="history">历史记录</button></div>
   <section id="code-pane" class="work-pane">
