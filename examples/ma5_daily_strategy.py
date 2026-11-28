@@ -8,6 +8,7 @@ SYMBOL = "000001.SZ"
 
 
 def init(context):
+    context.set_benchmark("000300.SH")
     context.set_fees(
         commission_rate=0.0003,
         minimum_commission=5,

@@ -1,5 +1,6 @@
 EXAMPLE = '''# 示例：策略自行决定交易对象，无需配置股票池或订阅行情。
 def init(context):
+    context.set_benchmark("000300.SH")
     context.set_fees(
         commission_rate=0.0003,
         minimum_commission=5,

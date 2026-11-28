@@ -10,7 +10,7 @@ from types import MappingProxyType, SimpleNamespace
 
 from .account import Account
 from .matching import MatchingEngine
-from .models import Bar, FeeModel, SHANGHAI, ZERO, jsonable
+from .models import Bar, FeeModel, SHANGHAI, ZERO, decimal, jsonable
 
 
 class Context:
@@ -49,6 +49,17 @@ class Context:
             raise ValueError("费用仅可在 init 中、首次下单前设置")
         self._engine.account.fees = FeeModel(**parameters)
 
+    def set_benchmark(self, symbol):
+        if not self._engine.initializing or self._engine.exchange.orders:
+            raise ValueError("基准指数仅可在 init 中设置")
+        if self._engine.benchmark_symbol is not None:
+            raise ValueError("基准指数只能设置一次")
+        if self._engine.benchmark_loader is None:
+            raise ValueError("当前运行环境未提供基准指数数据")
+        self._engine.benchmark_symbol = str(symbol).strip().upper()
+        rows = self._engine.benchmark_loader(self._engine.benchmark_symbol)
+        self._engine.benchmark_closes = {row["date"]: decimal(row["close"]) for row in rows}
+
     def order(self, symbol, side, quantity, limit_price=None):
         if self._engine.finishing:
             raise ValueError("回测结束阶段不能下单")
@@ -78,7 +89,7 @@ class Context:
 class Engine:
     def __init__(self, bars: list[Bar], strategy, *, initial_cash=1_000_000, fees=None,
                  frequency="1d", sessions=None, start=None, end=None, symbols=None, progress=None,
-                 data_loader=None):
+                 data_loader=None, benchmark_loader=None):
         if frequency not in ("1d", "1m"):
             raise ValueError("频率必须是 1d 或 1m")
         self.frequency = frequency
@@ -111,6 +122,11 @@ class Engine:
         self.finishing = False
         self.initializing = False
         self.data_loader = data_loader
+        self.benchmark_loader = benchmark_loader
+        self.benchmark_symbol = None
+        self.benchmark_closes = {}
+        self.benchmark_base = None
+        self.benchmark_last = None
         self.loaded_symbols = {b.symbol for b in bars}
         self.events = defaultdict(lambda: defaultdict(lambda: {"open": {}, "close": []}))
         self.clock_closes = set()
@@ -231,8 +247,21 @@ class Engine:
             self.callback("after_trading")
             self.reports()
             snapshot = self.account.snapshot()
-            self.curve.append({"date": session.isoformat(), "equity": snapshot["equity"], "net_value": snapshot["net_value"]})
-            self.position_history.append({"date": session.isoformat(), "positions": snapshot["positions"]})
+            point = {"date": session.isoformat(), "equity": snapshot["equity"], "net_value": snapshot["net_value"]}
+            if self.benchmark_symbol:
+                close = self.benchmark_closes.get(session.isoformat(), self.benchmark_last)
+                if close is not None:
+                    self.benchmark_last = close
+                    self.benchmark_base = self.benchmark_base or close
+                    benchmark_net_value = close / self.benchmark_base
+                    point["benchmark_net_value"] = benchmark_net_value
+                    point["excess_net_value"] = snapshot["net_value"] / benchmark_net_value
+            self.curve.append(point)
+            self.position_history.append({
+                "date": session.isoformat(), "positions": snapshot["positions"],
+                "equity": snapshot["equity"], "cash": snapshot["cash"],
+                "total_pnl": snapshot["total_pnl"], "market_value": snapshot["market_value"],
+            })
             self.progress({"completed": index + 1, "total": len(self.sessions), "date": session.isoformat(),
                            "equity_point": self.curve[-1]})
         self.finishing = True
@@ -259,6 +288,7 @@ class Engine:
         annualized_volatility = daily_volatility * sqrt(252)
         sharpe = fmean(daily_returns) / daily_volatility * sqrt(252) if daily_volatility else 0
         positive_days = sum(value > 0 for value in daily_returns)
+        benchmark_return = (self.benchmark_last / self.benchmark_base - 1) if self.benchmark_base else None
         return jsonable({
             "account": snapshot, "equity_curve": self.curve,
             "orders": list(self.exchange.orders.values()), "trades": self.exchange.fills,
@@ -266,6 +296,7 @@ class Engine:
             "effective_fees": self.account.fees,
             "loaded_symbols": sorted(self.loaded_symbols),
             "position_history": self.position_history,
+            "benchmark": {"symbol": self.benchmark_symbol} if self.benchmark_symbol else None,
             "metrics": {
                 "total_return": total_return,
                 "annualized_return": annualized_return,
@@ -277,6 +308,8 @@ class Engine:
                 "max_drawdown_end": self.curve[trough_index]["date"] if self.curve else None,
                 "trade_count": len(self.exchange.fills),
                 "trading_days": len(self.curve),
+                "benchmark_return": benchmark_return,
+                "excess_return": (1 + total_return) / (1 + benchmark_return) - 1 if benchmark_return is not None else None,
             },
         })
 

@@ -4,6 +4,7 @@
 
 ```python
 def init(context):
+    context.set_benchmark("000300.SH")
     context.set_fees(commission_rate=0.0003, minimum_commission=5,
                      sell_tax_rate=0.0005, transfer_rate=0.00001)
     context.state.ready = False
@@ -48,6 +49,8 @@ def handle_bar(context):
 `context.current(symbol, frequency=None)` 返回最近已完成的 Bar，没有历史时返回 None。它不保证是当前交易日的 Bar；有停牌或缺口时应检查 Bar.end。首次查询或下单会由后台加载该股票，并自动继续回放、撮合和估值。
 
 `context.set_fees(commission_rate=0.0003, minimum_commission=5, sell_tax_rate=0.0005, transfer_rate=0.00001)` 只允许在 init 中首次下单前调用；省略的参数使用上述默认值。不调用则使用默认费率。结果保存 effective_fees 及 loaded_symbols，便于复查。
+
+`context.set_benchmark("000300.SH")` 在 `init` 中声明本次回测的绩效基准。系统后台自动读取指数日线，分钟策略也按每日收盘指数计算基准净值和超额收益；策略无需订阅指数行情。未调用时结果只计算策略自身收益，不使用隐式默认指数。
 
 `context.history(symbol, count=20, frequency=None)` 返回已完成 Bar 的 tuple。数量不足时返回已有数据，不回填未来数据。分钟任务可以指定 `frequency="1d"`。目前日线任务不加载分钟线；所有任务的分钟历史都不预取开始日前数据。
 

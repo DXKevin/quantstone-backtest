@@ -137,8 +137,10 @@ class MatchingEngine:
                 self._finish(order, "rejected", "开盘价格变化后资金不足", timestamp)
                 continue
             notional = money(price * order.quantity)
+            fees = self.account.fees.calculate(order.side, notional)
+            realized_pnl = self.account.sale_realized_pnl(order.symbol, order.quantity, price, fees) if order.side == "sell" else ZERO
             fill = Fill(f"F{len(self.fills) + 1:06d}", order.id, order.symbol, order.side,
-                        order.quantity, price, timestamp, self.account.fees.calculate(order.side, notional))
+                        order.quantity, price, timestamp, fees, realized_pnl)
             self.account.apply_fill(order, fill)
             self.fills.append(fill)
             order.status, order.filled_quantity, order.updated_at = "filled", order.quantity, timestamp

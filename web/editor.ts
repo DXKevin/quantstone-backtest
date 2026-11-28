@@ -33,6 +33,7 @@ if (textarea && parent) {
     snippetCompletion("order_all(${symbol}, ${side})", {label: "order_all", type: "method", detail: "全仓买入或清仓"}),
     snippetCompletion("cancel_order(${order_id})", {label: "cancel_order", type: "method", detail: "撤销委托"}),
     snippetCompletion("set_fees(${})", {label: "set_fees", type: "method", detail: "设置交易费用"}),
+    snippetCompletion('set_benchmark("${000300.SH}")', {label: "set_benchmark", type: "method", detail: "设置绩效基准指数"}),
     {label: "portfolio", type: "property", detail: "账户与持仓"},
     {label: "state", type: "property", detail: "策略状态"},
     snippetCompletion("log(${message})", {label: "log", type: "method", detail: "记录策略日志"}),

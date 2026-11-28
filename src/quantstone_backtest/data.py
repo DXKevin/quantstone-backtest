@@ -12,6 +12,7 @@ MINUTE = "tb_sbkj2077.cn.stock.minute_1m"
 CALENDAR = "tushare.cn.stock.trade_cal"
 LIMITS = "tushare.cn.stock.stk_limit"
 FACTORS = "tushare.cn.stock.adj_factor"
+INDEX_DAILY = "tushare.cn.index.index_daily"
 
 
 @dataclass
@@ -89,6 +90,17 @@ def demo_data(start, end, symbols, frequency):
                     bars.append(Bar(symbol, stamp, stamp + timedelta(minutes=1), mo,
                                     max(mo, mc) + Decimal('.01'), min(mo, mc) - Decimal('.01'), mc, 10000, "1m"))
     return DataBundle(bars, sessions, {"source": "demo", "note": "合成测试行情，仅用于验证回测流程；不包含真实交易日历或市场价格，不能用于评价策略表现。"})
+
+
+def demo_benchmark(start, end, symbol):
+    rows, cursor, index = [], start, 0
+    while cursor <= end:
+        if cursor.weekday() < 5:
+            close = Decimal("1000") + Decimal(str(35 * math.sin(index / 19))) + Decimal(index) / 8
+            rows.append({"date": cursor.isoformat(), "close": str(close)})
+            index += 1
+        cursor += timedelta(days=1)
+    return rows
 
 
 def sdk_data(client, start, end, symbols, frequency, progress=None, minute_label="end"):

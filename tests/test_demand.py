@@ -15,7 +15,8 @@ def run(strategy, frequency="1d"):
     config = RunConfig(strategy=EXAMPLE, frequency=frequency, start=date(2026, 11, 2), end=date(2026, 11, 4))
     data = DemandData(config)
     engine = Engine([], strategy, frequency=frequency, start=config.start, end=config.end,
-                    sessions=data.bundle.sessions, data_loader=data.load)
+                    sessions=data.bundle.sessions, data_loader=data.load,
+                    benchmark_loader=data.load_benchmark)
     return engine.run(), data
 
 

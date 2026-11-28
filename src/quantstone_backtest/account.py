@@ -104,10 +104,16 @@ class Account:
             p.cost -= cost_removed
             p.quantity -= fill.quantity
             p.settled -= fill.quantity
-            self.realized_pnl += notional - fee - cost_removed
+            self.realized_pnl += fill.realized_pnl
         p.price = fill.price
         self.total_fees += fee
         self.applied_fills.add(fill.id)
+
+    def sale_realized_pnl(self, symbol, quantity, price, fees):
+        p = self.positions[symbol]
+        notional = money(price * quantity)
+        cost_removed = p.cost if quantity == p.quantity else money(p.cost * quantity / p.quantity)
+        return notional - sum(fees.values(), ZERO) - cost_removed
 
     def mark(self, prices: dict[str, Decimal]):
         for symbol, price in prices.items():

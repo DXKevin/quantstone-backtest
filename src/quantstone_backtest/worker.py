@@ -62,6 +62,7 @@ def run(directory: Path):
     engine = Engine(initial_bars, strategy, initial_cash=config.initial_cash, fees=fees,
                     frequency=config.frequency, sessions=bundle.sessions, start=config.start, end=config.end,
                     symbols=config.symbols, data_loader=data.load,
+                    benchmark_loader=data.load_benchmark,
                     progress=lambda p: progress({"stage": "running", **p}))
     result = engine.run()
     result["data"] = bundle.metadata

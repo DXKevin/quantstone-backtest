@@ -137,6 +137,7 @@ class Fill:
     price: Decimal
     timestamp: datetime
     fees: dict[str, Decimal]
+    realized_pnl: Decimal = ZERO
 
 
 @dataclass

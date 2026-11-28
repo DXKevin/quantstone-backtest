@@ -156,6 +156,24 @@ def test_corporate_action_reinvests_into_fractional_shares_and_can_sell_all():
     }]
 
 
+def test_strategy_benchmark_is_normalized_and_produces_excess_return():
+    def init(context):
+        context.set_benchmark("000300.SH")
+
+    rows = [
+        {"date": "2026-11-02", "close": "100"},
+        {"date": "2026-11-03", "close": "110"},
+    ]
+    result = Engine(
+        [bar(2), bar(3)], SimpleNamespace(init=init), fees=FREE,
+        benchmark_loader=lambda symbol: rows,
+    ).run()
+    assert result["benchmark"] == {"symbol": "000300.SH"}
+    assert result["equity_curve"][-1]["benchmark_net_value"] == "1.1"
+    assert D(result["metrics"]["benchmark_return"]) == D("0.1")
+    assert D(result["metrics"]["excess_return"]) == D("-0.0909090909090909090909090909")
+
+
 def test_corporate_action_cancels_pre_action_pending_order():
     def handle(c, bars):
         if c.now.day == 1:

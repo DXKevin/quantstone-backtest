@@ -1,5 +1,7 @@
 """Internal per-run cache. Strategies do not manage subscriptions."""
-from .data import demo_data, sdk_data
+import re
+
+from .data import INDEX_DAILY, demo_benchmark, demo_data, sdk_data
 
 
 class DemandData:
@@ -39,3 +41,20 @@ class DemandData:
                 f"跳过09:30记录 {skipped} 条；无逐笔流动性模拟。"
             )
         return bundle.bars
+
+    def load_benchmark(self, symbol):
+        symbol = str(symbol).strip().upper()
+        if not re.fullmatch(r"\d{6}\.(?:SH|SZ|CSI)", symbol):
+            raise ValueError(f"非法基准指数代码：{symbol}")
+        c = self.config
+        if c.source == "demo":
+            return demo_benchmark(c.start, c.end, symbol)
+        rows = self.client.read(INDEX_DAILY, start=c.start, end=c.end, ts_code=symbol).to_pylist()
+        result = sorted(
+            ({"date": str(row["trade_date"]), "close": str(row["close"])} for row in rows if row.get("close") is not None),
+            key=lambda row: row["date"],
+        )
+        if not result:
+            raise ValueError(f"基准指数 {symbol} 在回测区间内没有日线数据")
+        self.bundle.metadata.setdefault("datasets", []).append(INDEX_DAILY)
+        return result

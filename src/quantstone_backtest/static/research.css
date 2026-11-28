@@ -125,3 +125,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offse
 @media(max-width:700px){.strategy-page.result-mode .result-layout{display:flex;flex-direction:column}.strategy-page.result-mode .result-sidebar{flex-shrink:0}}
 
 .strategy-page.result-mode .wide-chart-section:last-child{border-bottom:0}
+
+/* Result analysis readability and interactions. */
+.performance-strip span{margin-bottom:7px;font-size:12px}.performance-strip strong{font-size:15px}
+.chart-tooltip{padding:9px 12px;border:1px solid #dce2ea;background:#fff;color:#334155;box-shadow:0 5px 16px #17253a26;font-size:12px}
+.chart-tooltip-detail{display:flex;flex-direction:column;align-items:flex-start;gap:5px}.chart-tooltip-detail strong{font-size:13px;color:#26354a}.chart-tooltip-detail span{display:block}.chart-tooltip-detail i{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%}.benchmark-dot{background:#7f9fbd}.strategy-dot{background:#e85c57}.excess-dot{background:#75a17e}.buy-text{color:#db4f4a}.sell-text{color:#347dcc}
+.chart-legend .benchmark-line:before{background:#7f9fbd}.chart-legend .excess-line:before{background:#75a17e}.chart-legend>strong{font-size:11px}
+.detail-date-toolbar label{display:flex;align-items:center;gap:7px;color:#607087;font-size:12px}.detail-date-toolbar input{width:145px}.detail-date-toolbar .primary{padding:7px 14px}.detail-date-toolbar>span{margin-left:0}.detail-date-toolbar>span:last-child{margin-left:auto;color:#758399;font-size:11px;font-variant-numeric:tabular-nums}
+.position-history-table .position-day-row{cursor:pointer}.position-history-table .position-day-row:hover{background:#f8fbff}.position-toggle{width:28px;height:28px;border:0;background:transparent;color:#3478d4;font-size:17px}.position-day-detail>td{padding:0!important;background:#f8fafc}.position-detail-inner{padding:0 34px 14px}.position-detail-inner .table-container{padding:0}.position-detail-inner table{background:#fff;border:1px solid #e7ebf0}.position-detail-inner th{background:#f5f7fa!important}
